@@ -25,3 +25,27 @@ services:
       resources:
         limits:
           memory: 128M
+
+  # ===========================================================
+  # INSTANCE 1: OT INGESTION / DRIVERS (OPC UA, Modbus, S7, etc.)
+  # ===========================================================
+  node-red-ingestion:
+    image: nodered/node-red:4.0
+    container_name: edge-node-red-ingestion
+    restart: unless-stopped
+    ports:
+      - "1881:1880"
+    environment:
+      - TZ=America/Bogota
+      - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_CREDENTIAL_SECRET}
+      - OPCUA_ENDPOINT=${OPCUA_ENDPOINT}
+    volumes:
+      - ./node-red-ingestion/data:/data
+    depends_on:
+      - mosquitto
+    networks:
+      - gateway-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
