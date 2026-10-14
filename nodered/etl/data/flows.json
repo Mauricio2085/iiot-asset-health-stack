@@ -1,0 +1,119 @@
+[
+    {
+        "id": "381ca58481ca40b3",
+        "type": "tab",
+        "label": "Telemetry ETL",
+        "disabled": false,
+        "info": "Subscribes to +/+/+/telemetry, validates each payload, enriches it with plant and area from the topic and outputs records shaped for the TimescaleDB hypertable.",
+        "env": []
+    },
+    {
+        "id": "9ab28967418d5930",
+        "type": "mqtt-broker",
+        "name": "Mosquitto Broker",
+        "broker": "mosquitto",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "24921b7059ba8a68",
+        "type": "mqtt in",
+        "z": "381ca58481ca40b3",
+        "name": "Subscribe telemetry",
+        "topic": "+/+/+/telemetry",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "9ab28967418d5930",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 350,
+        "y": 220,
+        "wires": [
+            [
+                "d34f09b0cd51ef0a"
+            ]
+        ]
+    },
+    {
+        "id": "f0599f72902529db",
+        "type": "debug",
+        "z": "381ca58481ca40b3",
+        "name": "Debug valid records",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 840,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "d34f09b0cd51ef0a",
+        "type": "function",
+        "z": "381ca58481ca40b3",
+        "name": "Validate and enrich",
+        "func": "const [plant, area, assetFromTopic] = msg.topic.split('/');\nconst p = msg.payload;\nconst errors = [];\nif (typeof p !== 'object' || p === null) {\n    errors.push('payload is not a JSON object');\n} else {\n    if (p.asset_id !== assetFromTopic) errors.push('asset_id does not match topic');\n    for (const field of ['temperature', 'pressure', 'vibration']) {\n        if (typeof p[field] !== 'number' || !Number.isFinite(p[field])) {\n            errors.push(`${field} is not a number`);\n        }\n    }\n    if (Number.isNaN(Date.parse(p.ts))) errors.push('ts is not a valid timestamp');\n}\nif (errors.length > 0) {\n    msg.errors = errors;\n    return [null, msg];\n}\nmsg.payload = {\n    time: p.ts,\n    plant,\n    area,\n    asset_id: p.asset_id,\n    temperature: p.temperature,\n    pressure: p.pressure,\n    vibration: p.vibration,\n    quality: p.quality ?? 'unknown'\n};\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 220,
+        "wires": [
+            [
+                "f0599f72902529db"
+            ],
+            [
+                "86dd60c88c332de4"
+            ]
+        ]
+    },
+    {
+        "id": "86dd60c88c332de4",
+        "type": "debug",
+        "z": "381ca58481ca40b3",
+        "name": "Debug invalid messages",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 850,
+        "y": 320,
+        "wires": []
+    }
+]

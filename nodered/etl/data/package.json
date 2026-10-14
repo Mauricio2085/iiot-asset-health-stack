@@ -1,0 +1,6 @@
+{
+  "name": "node-red-etl",
+  "description": "MQTT telemetry validation and TimescaleDB loading flows for the IIoT asset health stack",
+  "version": "0.0.1",
+  "private": true
+}
