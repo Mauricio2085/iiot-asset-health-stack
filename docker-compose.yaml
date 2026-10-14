@@ -90,6 +90,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
+      - ./timescaledb/init/001_schema.sql:/docker-entrypoint-initdb.d/010_schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
