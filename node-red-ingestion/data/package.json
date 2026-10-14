@@ -1,0 +1,9 @@
+{
+  "name": "node-red-ingestion",
+  "description": "OPC UA to MQTT ingestion flows for the IIoT asset health stack",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "node-red-contrib-opcua": "~0.2.355"
+  }
+}

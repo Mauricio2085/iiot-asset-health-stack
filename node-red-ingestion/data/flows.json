@@ -1,0 +1,249 @@
+[
+    {
+        "id": "c7bcc7bf9bcde73f",
+        "type": "tab",
+        "label": "OPC UA Ingestion",
+        "disabled": false,
+        "info": "Polls Prosys OPC UA tags every 5 s, builds a normalized JSON payload and publishes it to plant-01/area-01/critical-pump-01/telemetry.",
+        "env": []
+    },
+    {
+        "id": "bbd13d4ad45268eb",
+        "type": "OpcUa-Endpoint",
+        "name": "Prosys Simulation Server",
+        "endpoint": "${OPCUA_ENDPOINT}",
+        "secpol": "None",
+        "secmode": "None",
+        "none": true,
+        "login": false,
+        "usercert": false,
+        "usercertificate": "",
+        "userprivatekey": ""
+    },
+    {
+        "id": "c876fbb4704cb969",
+        "type": "mqtt-broker",
+        "name": "Mosquitto Broker",
+        "broker": "mosquitto",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "591a445d44e17fa2",
+        "type": "inject",
+        "z": "c7bcc7bf9bcde73f",
+        "name": "Poll every 5 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 100,
+        "y": 400,
+        "wires": [
+            [
+                "260f28bb0923d6a1",
+                "b103527df368e9b4",
+                "0c7c034b5f7966ca"
+            ]
+        ]
+    },
+    {
+        "id": "1550292f21b5a9f9",
+        "type": "OpcUa-Client",
+        "z": "c7bcc7bf9bcde73f",
+        "endpoint": "bbd13d4ad45268eb",
+        "action": "read",
+        "deadbandtype": "a",
+        "deadbandvalue": 1,
+        "time": 10,
+        "timeUnit": "s",
+        "certificate": "n",
+        "localfile": "",
+        "localkeyfile": "",
+        "securitymode": "None",
+        "securitypolicy": "None",
+        "useTransport": false,
+        "maxChunkCount": 1,
+        "maxMessageSize": 8192,
+        "receiveBufferSize": 8192,
+        "sendBufferSize": 8192,
+        "setstatusandtime": false,
+        "keepsessionalive": false,
+        "name": "Read Prosys tags",
+        "applicationName": "",
+        "applicationUri": "",
+        "x": 550,
+        "y": 400,
+        "wires": [
+            [
+                "ed1ccf304f2df219"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "5948a0babde2de06",
+        "type": "debug",
+        "z": "c7bcc7bf9bcde73f",
+        "name": "Debug telemetry",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1080,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "260f28bb0923d6a1",
+        "type": "OpcUa-Item",
+        "z": "c7bcc7bf9bcde73f",
+        "item": "ns=3;s=criticalTemp1",
+        "datatype": "Double",
+        "value": "",
+        "name": "Pump temperature",
+        "x": 330,
+        "y": 340,
+        "wires": [
+            [
+                "1550292f21b5a9f9"
+            ]
+        ]
+    },
+    {
+        "id": "c7cabb79b027c993",
+        "type": "function",
+        "z": "c7bcc7bf9bcde73f",
+        "name": "Build telemetry payload",
+        "func": "let valoresProsys = (msg.payload && msg.payload.hasOwnProperty('value')) ? msg.payload.value : msg.payload;\nlet tempActual = valoresProsys[\"ns=3;s=criticalTemp1\"]\nlet pressActual = valoresProsys[\"ns=3;s=criticalPressure1\"]\nlet vibrActual = valoresProsys[\"ns=3;s=criticalVibration1\"]\n\nmsg.payload= {\n    \"asset_id\":\"critical-pump-01\",\n    \"ts\":new Date().toISOString(),\n    \"vibration\":vibrActual,\n    \"temperature\":tempActual,\n    \"pressure\":pressActual,\n    \"quality\": \"good\"\n    };\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 280,
+        "wires": [
+            [
+                "5948a0babde2de06",
+                "1fe614d12bae64c0"
+            ]
+        ]
+    },
+    {
+        "id": "b103527df368e9b4",
+        "type": "OpcUa-Item",
+        "z": "c7bcc7bf9bcde73f",
+        "item": "ns=3;s=criticalPressure1",
+        "datatype": "Double",
+        "value": "",
+        "name": "Pump pressure",
+        "x": 320,
+        "y": 400,
+        "wires": [
+            [
+                "1550292f21b5a9f9"
+            ]
+        ]
+    },
+    {
+        "id": "ed1ccf304f2df219",
+        "type": "join",
+        "z": "c7bcc7bf9bcde73f",
+        "name": "Join sensor readings",
+        "mode": "custom",
+        "build": "object",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "topic",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "useparts": false,
+        "accumulate": false,
+        "timeout": "0.5",
+        "count": "3",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 600,
+        "y": 280,
+        "wires": [
+            [
+                "c7cabb79b027c993"
+            ]
+        ]
+    },
+    {
+        "id": "0c7c034b5f7966ca",
+        "type": "OpcUa-Item",
+        "z": "c7bcc7bf9bcde73f",
+        "item": "ns=3;s=criticalVibration1",
+        "datatype": "Double",
+        "value": "",
+        "name": "Pump vibration",
+        "x": 320,
+        "y": 460,
+        "wires": [
+            [
+                "1550292f21b5a9f9"
+            ]
+        ]
+    },
+    {
+        "id": "1fe614d12bae64c0",
+        "type": "mqtt out",
+        "z": "c7bcc7bf9bcde73f",
+        "name": "Publish telemetry",
+        "topic": "plant-01/area-01/critical-pump-01/telemetry",
+        "qos": "1",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "c876fbb4704cb969",
+        "x": 1090,
+        "y": 340,
+        "wires": []
+    }
+]
