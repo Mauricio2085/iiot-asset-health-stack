@@ -4,7 +4,7 @@
         "type": "tab",
         "label": "Telemetry ETL",
         "disabled": false,
-        "info": "Subscribes to +/+/+/telemetry, validates each payload, enriches it with plant and area from the topic and outputs records shaped for the TimescaleDB hypertable.",
+        "info": "Subscribes to +/+/+/telemetry, validates each payload, enriches it with plant and area from the topic and inserts it into the sensor_readings hypertable.",
         "env": []
     },
     {
@@ -39,6 +39,31 @@
         "sessionExpiry": ""
     },
     {
+        "id": "0a4795f3533d5ec7",
+        "type": "postgreSQLConfig",
+        "name": "TimescaleDB",
+        "host": "timescaledb",
+        "hostFieldType": "str",
+        "port": 5432,
+        "portFieldType": "num",
+        "database": "POSTGRES_DB",
+        "databaseFieldType": "env",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": 10,
+        "maxFieldType": "num",
+        "idle": 1000,
+        "idleFieldType": "num",
+        "connectionTimeout": 10000,
+        "connectionTimeoutFieldType": "num",
+        "userFieldType": "env",
+        "userEnv": "POSTGRES_USER",
+        "passwordFieldType": "env",
+        "passwordEnv": "POSTGRES_PASSWORD"
+    },
+    {
         "id": "24921b7059ba8a68",
         "type": "mqtt in",
         "z": "381ca58481ca40b3",
@@ -51,8 +76,8 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 350,
-        "y": 220,
+        "x": 130,
+        "y": 280,
         "wires": [
             [
                 "d34f09b0cd51ef0a"
@@ -63,16 +88,16 @@
         "id": "f0599f72902529db",
         "type": "debug",
         "z": "381ca58481ca40b3",
-        "name": "Debug valid records",
+        "name": "Debug db errors",
         "active": true,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
+        "complete": "true",
+        "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 840,
+        "x": 1000,
         "y": 100,
         "wires": []
     },
@@ -88,11 +113,11 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 610,
-        "y": 220,
+        "x": 390,
+        "y": 280,
         "wires": [
             [
-                "f0599f72902529db"
+                "769581bceb70b8b7"
             ],
             [
                 "86dd60c88c332de4"
@@ -112,8 +137,80 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 850,
-        "y": 320,
+        "x": 630,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "c8e81525ba6d8750",
+        "type": "postgresql",
+        "z": "381ca58481ca40b3",
+        "name": "Insert reading",
+        "query": "INSERT INTO sensor_readings (time, plant, area, asset_id, temperature, pressure, vibration, quality)\nVALUES ($1, $2, $3, $4, $5, $6, $7, $8)\nON CONFLICT DO NOTHING;",
+        "postgreSQLConfig": "0a4795f3533d5ec7",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 880,
+        "y": 220,
+        "wires": [
+            [
+                "9ae7b948c64a599b"
+            ]
+        ]
+    },
+    {
+        "id": "769581bceb70b8b7",
+        "type": "function",
+        "z": "381ca58481ca40b3",
+        "name": "Map to SQL params",
+        "func": "const r = msg.payload;\nmsg.params = [r.time, r.plant, r.area, r.asset_id, r.temperature, r.pressure, r.vibration, r.quality];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 620,
+        "y": 220,
+        "wires": [
+            [
+                "c8e81525ba6d8750"
+            ]
+        ]
+    },
+    {
+        "id": "9be67596ecdd91ae",
+        "type": "catch",
+        "z": "381ca58481ca40b3",
+        "name": "Catch db errors",
+        "scope": [
+            "c8e81525ba6d8750"
+        ],
+        "uncaught": false,
+        "x": 780,
+        "y": 100,
+        "wires": [
+            [
+                "f0599f72902529db"
+            ]
+        ]
+    },
+    {
+        "id": "9ae7b948c64a599b",
+        "type": "debug",
+        "z": "381ca58481ca40b3",
+        "name": "Debug valid records",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1100,
+        "y": 220,
         "wires": []
     }
 ]

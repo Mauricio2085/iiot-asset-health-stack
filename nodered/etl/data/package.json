@@ -2,5 +2,8 @@
   "name": "node-red-etl",
   "description": "MQTT telemetry validation and TimescaleDB loading flows for the IIoT asset health stack",
   "version": "0.0.1",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "node-red-contrib-postgresql": "~0.16.2"
+  }
 }
