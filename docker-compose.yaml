@@ -40,7 +40,7 @@ services:
       - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_CREDENTIAL_SECRET}
       - OPCUA_ENDPOINT=${OPCUA_ENDPOINT}
     volumes:
-      - ./node-red-ingestion/data:/data
+      - ./nodered/ingestion/data:/data
     depends_on:
       - mosquitto
     networks:
