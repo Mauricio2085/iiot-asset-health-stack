@@ -5,6 +5,7 @@ networks:
 volumes:
   mosquitto_data:
   mosquitto_log:
+  timescaledb_data:
 services:
   # ===========================================================
   # BROKER MQTT LOCAL (Mosquitto)
@@ -72,3 +73,31 @@ services:
       resources:
         limits:
           memory: 512M
+
+  # ===========================================================
+  # TIME-SERIES STORAGE (PostgreSQL + TimescaleDB)
+  # ===========================================================
+  timescaledb:
+    image: timescale/timescaledb:latest-pg17
+    container_name: edge-timescaledb
+    restart: unless-stopped
+    ports:
+      - "5435:5432"
+    environment:
+      - TZ=America/Bogota
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gateway-net
+    deploy:
+      resources:
+        limits:
+          memory: 1G
