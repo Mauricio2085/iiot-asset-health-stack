@@ -1,0 +1,121 @@
+{
+  "uid": "asset-health",
+  "title": "Asset Health",
+  "tags": ["iiot", "timescaledb"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "asset",
+        "label": "Asset",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "timescaledb"
+        },
+        "query": "SELECT DISTINCT asset_id FROM sensor_readings ORDER BY 1",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Temperature",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), asset_id AS metric, avg(temperature) AS value\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1, 2\nORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Pressure",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), asset_id AS metric, avg(pressure) AS value\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1, 2\nORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Vibration",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), asset_id AS metric, avg(vibration) AS value\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1, 2\nORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Latest reading per asset",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT DISTINCT ON (asset_id) asset_id, plant, area, time, temperature, pressure, vibration, quality\nFROM sensor_readings\nWHERE asset_id IN ($asset)\nORDER BY asset_id, time DESC"
+        }
+      ]
+    }
+  ]
+}
