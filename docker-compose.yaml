@@ -6,6 +6,7 @@ volumes:
   mosquitto_data:
   mosquitto_log:
   timescaledb_data:
+  grafana_data:
 services:
   # ===========================================================
   # BROKER MQTT LOCAL (Mosquitto)
@@ -108,3 +109,35 @@ services:
       resources:
         limits:
           memory: 1G
+
+  # ===========================================================
+  # VISUALIZATION (Grafana)
+  # ===========================================================
+  grafana:
+    image: grafana/grafana-oss:12.0.0
+    container_name: edge-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - TZ=America/Bogota
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - gateway-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
