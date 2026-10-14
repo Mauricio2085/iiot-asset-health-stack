@@ -49,3 +49,26 @@ services:
       resources:
         limits:
           memory: 512M
+
+  # ===========================================================
+  # INSTANCE 2: ETL / NORMALIZATION (MQTT -> TimescaleDB)
+  # ===========================================================
+  node-red-etl:
+    image: nodered/node-red:4.0
+    container_name: edge-node-red-etl
+    restart: unless-stopped
+    ports:
+      - "1882:1880"
+    environment:
+      - TZ=America/Bogota
+      - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_CREDENTIAL_SECRET}
+    volumes:
+      - ./nodered/etl/data:/data
+    depends_on:
+      - mosquitto
+    networks:
+      - gateway-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
