@@ -3,8 +3,8 @@
         "id": "c7bcc7bf9bcde73f",
         "type": "tab",
         "label": "OPC UA Ingestion",
-        "disabled": false,
-        "info": "Polls Prosys OPC UA tags every 5 s, builds a normalized JSON payload and publishes it to plant-01/area-01/critical-pump-01/telemetry.",
+        "disabled": true,
+        "info": "Optional. Disabled by default while mqtt-simulator is the lab source. Polls Prosys OPC UA tags every 5 s, builds a normalized JSON payload and publishes it to plant-01/area-01/critical-pump-01/telemetry. Enable only when the simulator is stopped and Prosys is reachable — see docs/opcua-prosys.en.md.",
         "env": []
     },
     {

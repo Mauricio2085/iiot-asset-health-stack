@@ -1,8 +1,10 @@
-# OPC UA con Prosys
+# OPC UA con Prosys (opcional)
 
 [English](opcua-prosys.en.md)
 
-Prosys OPC UA Simulation Server es la fuente OT de este laboratorio. Corre en el host Windows. No hay servicio de Prosys en `docker-compose.yaml`. Sin ese proceso, el resto del stack arranca y Grafana queda vacío.
+La fuente OT por defecto es `mqtt-simulator` en Compose. Prosys OPC UA Simulation Server es un camino opcional. Corre en el host Windows; no hay servicio de Prosys en `docker-compose.yaml`.
+
+La pestaña **OPC UA Ingestion** en `node-red-ingestion` está **deshabilitada por defecto** para no publicar en el mismo topic que el simulador. Habilítala solo después de detener `mqtt-simulator` y confirmar que Prosys es alcanzable.
 
 ## Qué lee el flujo
 
@@ -47,11 +49,12 @@ En Docker Desktop sobre Windows o WSL2, ese nombre suele resolver solo. Si el mo
 
 ## Comprobación
 
-1. Prosys está en ejecución y las tres variables existen con los NodeId de la tabla.
-2. `.env` tiene `OPCUA_ENDPOINT` apuntando a ese servidor.
-3. `docker compose up -d`.
-4. En el editor de ingesta, `http://localhost:1881`, el nodo **Publish telemetry** muestra actividad cada 5 segundos.
-5. Una lectura MQTT del tópico `plant-01/area-01/critical-pump-01/telemetry` devuelve el JSON de arriba.
-6. Grafana, en `http://localhost:3001`, carpeta **IIoT**, dashboard **Asset Health**, muestra la serie de `critical-pump-01`.
+1. Detén el simulador MQTT para que no compita en el topic: `docker compose stop mqtt-simulator`.
+2. Prosys está en ejecución y las tres variables existen con los NodeId de la tabla.
+3. `.env` tiene `OPCUA_ENDPOINT` apuntando a ese servidor.
+4. `docker compose up -d` (si la ingesta ya corre, basta).
+5. En el editor de ingesta, `http://localhost:1881`, habilita la pestaña **OPC UA Ingestion** y despliega. El nodo **Publish telemetry** muestra actividad cada 5 segundos.
+6. Una lectura MQTT del tópico `plant-01/area-01/critical-pump-01/telemetry` devuelve el JSON de arriba.
+7. Grafana, en `http://localhost:3001`, carpeta **IIoT**, dashboard **Asset Health**, muestra la serie de `critical-pump-01`.
 
-Si el paso 4 no avanza, Prosys no es alcanzable o los NodeId no coinciden. El ETL y TimescaleDB no reciben nada que insertar.
+Si el paso 5 no avanza, Prosys no es alcanzable o los NodeId no coinciden. El ETL y TimescaleDB no reciben nada que insertar.

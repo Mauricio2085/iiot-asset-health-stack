@@ -1,8 +1,10 @@
-# OPC UA with Prosys
+# OPC UA with Prosys (optional)
 
 [Español](opcua-prosys.md)
 
-Prosys OPC UA Simulation Server is the OT source for this lab. It runs on the Windows host. There is no Prosys service in `docker-compose.yaml`. Without that process, the rest of the stack still starts and Grafana stays empty.
+The default lab source is `mqtt-simulator` in Compose. Prosys OPC UA Simulation Server is an optional OT path. It runs on the Windows host; there is no Prosys service in `docker-compose.yaml`.
+
+The **OPC UA Ingestion** tab in `node-red-ingestion` is **disabled by default** so it does not publish to the same topic as the simulator. Enable that tab only after stopping `mqtt-simulator` and confirming Prosys is reachable.
 
 ## What the flow reads
 
@@ -47,11 +49,12 @@ On Docker Desktop for Windows or WSL2, that name usually resolves on its own. If
 
 ## Check
 
-1. Prosys is running and the three variables exist with the NodeIds in the table.
-2. `.env` has `OPCUA_ENDPOINT` pointing at that server.
-3. `docker compose up -d`.
-4. In the ingestion editor, `http://localhost:1881`, the **Publish telemetry** node shows activity every 5 seconds.
-5. An MQTT read of `plant-01/area-01/critical-pump-01/telemetry` returns the JSON above.
-6. Grafana at `http://localhost:3001`, folder **IIoT**, dashboard **Asset Health**, shows the `critical-pump-01` series.
+1. Stop the MQTT simulator so it does not compete on the topic: `docker compose stop mqtt-simulator`.
+2. Prosys is running and the three variables exist with the NodeIds in the table.
+3. `.env` has `OPCUA_ENDPOINT` pointing at that server.
+4. `docker compose up -d` (ingestion already running is fine).
+5. In the ingestion editor, `http://localhost:1881`, enable the **OPC UA Ingestion** tab and deploy. The **Publish telemetry** node shows activity every 5 seconds.
+6. An MQTT read of `plant-01/area-01/critical-pump-01/telemetry` returns the JSON above.
+7. Grafana at `http://localhost:3001`, folder **IIoT**, dashboard **Asset Health**, shows the `critical-pump-01` series.
 
-If step 4 does not move, Prosys is unreachable or the NodeIds do not match. The ETL flow and TimescaleDB receive nothing to insert.
+If step 5 does not move, Prosys is unreachable or the NodeIds do not match. The ETL flow and TimescaleDB receive nothing to insert.

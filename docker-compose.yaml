@@ -29,6 +29,29 @@ services:
           memory: 128M
 
   # ===========================================================
+  # MQTT TELEMETRY SIMULATOR (default OT source for the lab)
+  # ===========================================================
+  mqtt-simulator:
+    build: ./mqtt-simulator
+    container_name: edge-mqtt-simulator
+    restart: unless-stopped
+    environment:
+      - TZ=America/Bogota
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - MQTT_TOPIC=plant-01/area-01/critical-pump-01/telemetry
+      - ASSET_ID=critical-pump-01
+      - PUBLISH_INTERVAL_S=5
+    depends_on:
+      - mosquitto
+    networks:
+      - gateway-net
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # ===========================================================
   # INSTANCE 1: OT INGESTION / DRIVERS (OPC UA, Modbus, S7, etc.)
   # ===========================================================
   node-red-ingestion:
