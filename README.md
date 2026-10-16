@@ -24,13 +24,13 @@ Node-RED ingestion  ──MQTT──►  Mosquitto
 
 ### Services
 
-| Service | Role | Host port |
+| Service | Image | Host port |
 | --- | --- | --- |
-| Mosquitto | MQTT broker | 1883 |
-| Node-RED ingestion | OPC UA read and MQTT publish | 1881 |
-| Node-RED ETL | Validate the payload and insert it | 1882 |
-| TimescaleDB | `sensor_readings` hypertable | 5435 |
-| Grafana | Asset Health dashboard | 3001 |
+| Mosquitto | `eclipse-mosquitto:2.0.22` | 1883 |
+| Node-RED ingestion | `nodered/node-red:4.0.9` | 1881 |
+| Node-RED ETL | `nodered/node-red:4.0.9` | 1882 |
+| TimescaleDB | `timescale/timescaledb:2.30.2-pg17` | 5435 |
+| Grafana | `grafana/grafana-oss:12.0.4` | 3001 |
 
 Grafana login comes from `GF_SECURITY_ADMIN_USER` and `GF_SECURITY_ADMIN_PASSWORD`. The dashboard is in the **IIoT** folder.
 
