@@ -1,11 +1,72 @@
 ## Overview
 
-This project presents an **end-to-end industrial telemetry pipeline** designed for **critical asset health monitoring** (tracking vibration, temperature, and pressure).
+End-to-end industrial telemetry pipeline for critical asset health monitoring. One simulated pump publishes temperature, pressure, and vibration. The stack ingests those signals, checks the payload, stores them as a time series, and charts them.
 
-### Key Features
+Prosys OPC UA Simulation Server runs on the Windows host and is not part of Compose. The lab setup is described in [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
 
-- **OT Simulation:** Prosys OPC UA Simulation Server.
-- **Messaging & Decoupling:** Mosquitto MQTT Broker running in Docker.
-- **ETL & Data Normalization:** Dual Node-RED containers for message consumption and JSON payload normalization.
-- **Time-Series Storage:** PostgreSQL with TimescaleDB hypertables for high-throughput sensor data.
-- **Visualization:** Real-time dashboards using Grafana.
+### Pipeline
+
+```text
+Prosys OPC UA (Windows host)
+        │  poll every 5 s
+        ▼
+Node-RED ingestion  ──MQTT──►  Mosquitto
+                                    │  plant-01/area-01/critical-pump-01/telemetry
+                                    ▼
+                              Node-RED ETL
+                                    │  validate, then insert
+                                    ▼
+                               TimescaleDB
+                                    │
+                                    ▼
+                                 Grafana
+```
+
+### Services
+
+| Service | Role | Host port |
+| --- | --- | --- |
+| Mosquitto | MQTT broker | 1883 |
+| Node-RED ingestion | OPC UA read and MQTT publish | 1881 |
+| Node-RED ETL | Validate the payload and insert it | 1882 |
+| TimescaleDB | `sensor_readings` hypertable | 5435 |
+| Grafana | Asset Health dashboard | 3001 |
+
+Grafana login comes from `GF_SECURITY_ADMIN_USER` and `GF_SECURITY_ADMIN_PASSWORD`. The dashboard is in the **IIoT** folder.
+
+### Quick start
+
+Docker is required. Prosys must already be running and reachable before any points show up in Grafana.
+
+```bash
+cp .env.example .env
+docker compose up -d
+```
+
+Change the passwords in `.env` before using the stack outside this machine. `OPCUA_ENDPOINT` must match the Prosys endpoint from the container network. See [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md).
+
+Open Grafana at `http://localhost:3001` and select **Asset Health**. The charts stay empty until the ingestion flow publishes a valid reading.
+
+### What the payload looks like
+
+The ingestion flow publishes QoS 1 JSON to `plant-01/area-01/critical-pump-01/telemetry`:
+
+```json
+{
+  "asset_id": "critical-pump-01",
+  "ts": "2026-10-15T21:00:00.000Z",
+  "temperature": 70.2,
+  "pressure": 2.4,
+  "vibration": 1.1,
+  "quality": "good"
+}
+```
+
+The ETL flow accepts the message only when `asset_id` matches the topic, the three signals are finite numbers, and `ts` is a timestamp. Valid rows go into `sensor_readings`.
+
+### Current limits
+
+- One asset, `critical-pump-01`, with `quality` fixed to `good`.
+- No readings are produced if Prosys is down or the three NodeIds are missing.
+- Mosquitto still allows anonymous clients. `MQTT_USER` and `MQTT_PASSWORD` are reserved and unused.
+- OPC UA security mode is `None`. That matches this lab simulator and is not a plant connection.
