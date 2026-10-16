@@ -52,6 +52,28 @@ services:
           memory: 64M
 
   # ===========================================================
+  # MODBUS TCP SLAVE (second OT source — holding registers)
+  # ===========================================================
+  modbus-slave:
+    build: ./modbus-slave
+    container_name: edge-modbus-slave
+    restart: unless-stopped
+    ports:
+      - "1502:502"
+    environment:
+      - TZ=America/Bogota
+      - MODBUS_BIND_HOST=0.0.0.0
+      - MODBUS_BIND_PORT=502
+      - MODBUS_UNIT_ID=1
+      - UPDATE_INTERVAL_S=1
+    networks:
+      - gateway-net
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # ===========================================================
   # INSTANCE 1: OT INGESTION / DRIVERS (OPC UA, Modbus, S7, etc.)
   # ===========================================================
   node-red-ingestion:
@@ -64,10 +86,14 @@ services:
       - TZ=America/Bogota
       - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_CREDENTIAL_SECRET}
       - OPCUA_ENDPOINT=${OPCUA_ENDPOINT}
+      - MODBUS_HOST=${MODBUS_HOST}
+      - MODBUS_PORT=${MODBUS_PORT}
+      - MODBUS_UNIT_ID=${MODBUS_UNIT_ID}
     volumes:
       - ./nodered/ingestion/data:/data
     depends_on:
       - mosquitto
+      - modbus-slave
     networks:
       - gateway-net
     deploy:
