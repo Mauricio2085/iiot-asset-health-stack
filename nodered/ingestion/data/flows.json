@@ -245,5 +245,153 @@
         "x": 1090,
         "y": 340,
         "wires": []
+    },
+    {
+        "id": "a8f3e2c1b0d94e71",
+        "type": "tab",
+        "label": "Modbus TCP Ingestion",
+        "disabled": false,
+        "info": "Polls modbus-slave holding registers HR0-HR2 every 5 s, scales them, and publishes plant-01/area-01/modbus-pump-01/telemetry. See docs/modbus-tcp.en.md.",
+        "env": []
+    },
+    {
+        "id": "b7e6d5c4a3928170",
+        "type": "modbus-client",
+        "name": "Modbus TCP Slave",
+        "clienttype": "tcp",
+        "bufferCommands": true,
+        "stateLogEnabled": false,
+        "queueLogEnabled": false,
+        "failureLogEnabled": true,
+        "tcpHost": "modbus-slave",
+        "tcpPort": "502",
+        "tcpType": "DEFAULT",
+        "serialPort": "/dev/ttyUSB",
+        "serialType": "RTU-BUFFERD",
+        "serialBaudrate": "9600",
+        "serialDatabits": "8",
+        "serialStopbits": "1",
+        "serialParity": "none",
+        "serialConnectionDelay": "100",
+        "serialAsciiResponseStartDelimiter": "0x3A",
+        "unit_id": 1,
+        "commandDelay": 1,
+        "clientTimeout": 1000,
+        "reconnectOnTimeout": true,
+        "reconnectTimeout": 2000,
+        "parallelUnitIdsAllowed": true,
+        "showWarnings": true,
+        "showLogs": true
+    },
+    {
+        "id": "c6d5e4f3a2819071",
+        "type": "inject",
+        "z": "a8f3e2c1b0d94e71",
+        "name": "Poll every 5 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 140,
+        "y": 160,
+        "wires": [
+            [
+                "d5c4b3a291807162"
+            ]
+        ]
+    },
+    {
+        "id": "d5c4b3a291807162",
+        "type": "modbus-getter",
+        "z": "a8f3e2c1b0d94e71",
+        "name": "Read HR0-HR2",
+        "showStatusActivities": true,
+        "showErrors": true,
+        "showWarnings": true,
+        "logIOActivities": false,
+        "unitid": "1",
+        "dataType": "HoldingRegister",
+        "adr": "0",
+        "quantity": "3",
+        "server": "b7e6d5c4a3928170",
+        "useIOFile": false,
+        "ioFile": "",
+        "useIOForPayload": false,
+        "emptyMsgOnFail": false,
+        "keepMsgProperties": false,
+        "delayOnStart": false,
+        "startDelayTime": "",
+        "x": 360,
+        "y": 160,
+        "wires": [
+            [
+                "e4d3c2b1a0908172"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "e4d3c2b1a0908172",
+        "type": "function",
+        "z": "a8f3e2c1b0d94e71",
+        "name": "Scale and build payload",
+        "func": "const regs = Array.isArray(msg.payload)\n    ? msg.payload\n    : (msg.payload && Array.isArray(msg.payload.data) ? msg.payload.data : null);\nif (!regs || regs.length < 3) {\n    node.warn('expected 3 holding registers, got: ' + JSON.stringify(msg.payload));\n    return null;\n}\nconst toNum = (v) => (typeof v === 'number' ? v : Number(v));\nmsg.payload = {\n    asset_id: 'modbus-pump-01',\n    ts: new Date().toISOString(),\n    temperature: toNum(regs[0]) / 10,\n    pressure: toNum(regs[1]) / 100,\n    vibration: toNum(regs[2]) / 100,\n    quality: 'good'\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 160,
+        "wires": [
+            [
+                "f3e2d1c0b9a08173",
+                "a1b0c9d8e7f06174"
+            ]
+        ]
+    },
+    {
+        "id": "f3e2d1c0b9a08173",
+        "type": "mqtt out",
+        "z": "a8f3e2c1b0d94e71",
+        "name": "Publish modbus telemetry",
+        "topic": "plant-01/area-01/modbus-pump-01/telemetry",
+        "qos": "1",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "c876fbb4704cb969",
+        "x": 880,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "a1b0c9d8e7f06174",
+        "type": "debug",
+        "z": "a8f3e2c1b0d94e71",
+        "name": "Debug modbus telemetry",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 870,
+        "y": 220,
+        "wires": []
     }
 ]
