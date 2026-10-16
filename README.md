@@ -1,25 +1,32 @@
 ## Overview
 
-End-to-end industrial telemetry pipeline for critical asset health monitoring. One simulated pump publishes temperature, pressure, and vibration. The stack ingests those signals, checks the payload, stores them as a time series, and charts them.
+End-to-end industrial telemetry pipeline for critical asset health monitoring. Simulated pumps publish temperature, pressure, and vibration. The stack ingests those signals, checks the payload, stores them as a time series, and charts them.
 
-By default, `mqtt-simulator` publishes that telemetry over MQTT. No Windows host tools are required for the demo. Prosys OPC UA remains an optional path; see [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
+### OT sources
+
+| Source | Role | Asset | Default |
+| --- | --- | --- | --- |
+| `mqtt-simulator` | Publishes the telemetry JSON straight to Mosquitto | `critical-pump-01` | On |
+| `modbus-slave` + Node-RED Modbus tab | Modbus TCP holding registers → scaled JSON → MQTT | `modbus-pump-01` | On |
+| Prosys OPC UA | Optional Windows-host simulator → Node-RED OPC UA tab | `critical-pump-01` | Off |
+
+Lab notes: [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
 
 ### Pipeline
 
 ```text
-mqtt-simulator
-        │  publish every 5 s (QoS 1)
-        ▼
-   Mosquitto  ◄──  Node-RED ingestion (OPC UA optional, off by default)
-        │  plant-01/area-01/critical-pump-01/telemetry
-        ▼
-  Node-RED ETL
-        │  validate, then insert
-        ▼
-   TimescaleDB
-        │
-        ▼
-     Grafana
+mqtt-simulator ──────────────────────────────┐
+                                             │  QoS 1
+modbus-slave ──► Node-RED (Modbus TCP) ──────┼──► Mosquitto
+                                             │      │  +/+/+/telemetry
+Prosys OPC UA ─► Node-RED (OPC UA, off) ─────┘      ▼
+                                              Node-RED ETL
+                                                    │  validate, then insert
+                                                    ▼
+                                               TimescaleDB
+                                                    │
+                                                    ▼
+                                                 Grafana
 ```
 
 ### Services
@@ -28,6 +35,7 @@ mqtt-simulator
 | --- | --- | --- |
 | Mosquitto | `eclipse-mosquitto:2.0.22` | 1883 |
 | mqtt-simulator | `./mqtt-simulator` | — |
+| modbus-slave | `./modbus-slave` | 1502 |
 | Node-RED ingestion | `nodered/node-red:4.0.9` | 1881 |
 | Node-RED ETL | `nodered/node-red:4.0.9` | 1882 |
 | TimescaleDB | `timescale/timescaledb:2.30.2-pg17` | 5435 |
@@ -37,16 +45,16 @@ Grafana login comes from `GF_SECURITY_ADMIN_USER` and `GF_SECURITY_ADMIN_PASSWOR
 
 ### Quick start
 
-Docker is required. The MQTT simulator starts with the stack and fills Grafana without Prosys.
+Docker is required. The MQTT simulator and the Modbus TCP path start with the stack. No Windows host tools are required for the demo.
 
 ```bash
 cp .env.example .env
 docker compose up -d --build
 ```
 
-Change the passwords in `.env` before using the stack outside this machine.
+Change the passwords in `.env` before using the stack outside this machine. First start of `node-red-ingestion` may take a minute while it installs Modbus nodes.
 
-Open Grafana at `http://localhost:3001` and select **Asset Health**. Charts should show `critical-pump-01` within about a minute after the first publish.
+Open Grafana at `http://localhost:3001` and select **Asset Health**. Within about a minute you should see `critical-pump-01` and `modbus-pump-01`.
 
 ### Optional OT source: Prosys OPC UA
 
@@ -60,7 +68,7 @@ Full setup: [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md).
 
 ### What the payload looks like
 
-The simulator (and the optional OPC UA flow) publishes QoS 1 JSON to `plant-01/area-01/critical-pump-01/telemetry`:
+Every OT path publishes QoS 1 JSON to `plant-01/area-01/<asset_id>/telemetry`:
 
 ```json
 {
@@ -75,8 +83,11 @@ The simulator (and the optional OPC UA flow) publishes QoS 1 JSON to `plant-01/a
 
 The ETL flow accepts the message only when `asset_id` matches the topic, the three signals are finite numbers, and `ts` is a timestamp. Valid rows go into `sensor_readings`.
 
+Modbus values arrive as integers in holding registers and are scaled in Node-RED (`HR0 / 10`, `HR1 / 100`, `HR2 / 100`). See [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md).
+
 ### Current limits
 
-- One asset, `critical-pump-01`, with `quality` fixed to `good`.
+- Two lab assets by default (`critical-pump-01`, `modbus-pump-01`); `quality` is fixed to `good`.
 - Mosquitto still allows anonymous clients. `MQTT_USER` and `MQTT_PASSWORD` are reserved and unused.
 - OPC UA security mode is `None` when that optional path is enabled. That matches the lab simulator and is not a plant connection.
+- Modbus RTU is not implemented (serial / USB horizon only).
