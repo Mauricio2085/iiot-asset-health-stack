@@ -12,13 +12,34 @@ The asset is a motor, not a "Modbus pump". The `asset_id` names the equipment; M
 | --- | --- | --- | --- |
 | HR0 | temperature | value / 10 | `550` → `55.0` °C |
 | HR1 | pressure | value / 100 | `100` → `1.00` bar |
-| HR2 | vibration | value / 100 | `80` → `0.80` |
+| HR2 | vibration | value / 100 | `80` → `0.80` mm/s RMS |
 
 - Unit id: `1`
 - Container port: `502`
 - Host port: `1502` (`localhost:1502` from the host)
-- Nominal point: ~55 °C, ~1.0 bar, ~0.8 vibration
+- Nominal point: ~55 °C, ~1.0 bar, ~0.8 mm/s
 - Soft noise matches `mqtt-simulator` (slow sine drift plus small jitter)
+
+## Unbalance scenario
+
+The motor repeats a 13-minute cycle that simulates a progressive rotor unbalance:
+
+| Minutes | Phase in the log | Vibration |
+| --- | --- | --- |
+| 0–3 | `normal` | ~0.8 mm/s |
+| 3–10 | `unbalance-ramp` | rises on a curve; crosses 2.8 near minute 7.8 and 4.5 near minute 9.6 |
+| 10–13 | `alarm-hold` | ~5.0 mm/s, sustained |
+| 13 | maintenance | the rotor is balanced, vibration returns to ~0.8 and the cycle repeats |
+
+The ramp is quadratic: it starts slow and accelerates, like the P-F curve of a real failure. Temperature rises by at most 1.5 °C and pressure does not change. Only vibration moving points to a mechanical cause rather than a process one. With overall vibration alone, the pattern is *consistent with* unbalance; confirming it would take a vibration spectrum.
+
+Reference thresholds, based on ISO 10816-3 for medium machines on rigid foundations: **warning at 2.8 mm/s** (zone B/C limit) and **alarm at 4.5 mm/s** (zone C/D limit). Exact limits depend on each machine's size and mounting.
+
+To start the cycle from minute 0, for example at the beginning of a demo:
+
+```bash
+docker compose restart modbus-slave
+```
 
 ## MQTT contract
 

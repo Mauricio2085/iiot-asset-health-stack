@@ -14,9 +14,17 @@ Each `asset_id` names the equipment. The source column only says how its reading
 
 | Asset | Nominal temperature | Nominal pressure | Nominal vibration |
 | --- | --- | --- | --- |
-| `critical-pump-01` | ~70 °C | ~2.5 bar | ~1.0 |
-| `critical-compressor-01` | ~85 °C | ~6.0 bar | ~1.5 |
-| `critical-motor-01` | ~55 °C | ~1.0 bar | ~0.8 |
+| `critical-pump-01` | ~70 °C | ~2.5 bar | ~1.0 mm/s |
+| `critical-compressor-01` | ~85 °C | ~6.0 bar | ~1.5 mm/s |
+| `critical-motor-01` | ~55 °C | ~1.0 bar | ~0.8 mm/s |
+
+Vibration is velocity in mm/s RMS. Reference thresholds follow ISO 10816-3 for medium machines on rigid foundations: warning at 2.8 mm/s, alarm at 4.5 mm/s.
+
+### Demo scenario: motor unbalance
+
+`critical-motor-01` repeats a 13-minute cycle: 3 minutes of normal operation, a progressive unbalance that crosses warning near minute 7.8 and alarm near minute 9.6, 3 minutes of sustained alarm, then a simulated rotor balancing that brings it back to normal. Temperature and pressure barely move, which points to a mechanical cause rather than a process one. The pump and the compressor stay healthy as a contrast.
+
+Run `docker compose restart modbus-slave` to start the cycle from minute 0. Details: [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md#unbalance-scenario).
 
 Lab notes: [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
 
@@ -96,6 +104,7 @@ Modbus values arrive as integers in holding registers and are scaled in Node-RED
 ### Current limits
 
 - Three lab assets in one plant and area; `quality` is fixed to `good`.
+- Warning and alarm thresholds are documented but not evaluated yet: nothing in the stack classifies a reading as normal, warning, or alarm.
 - Mosquitto still allows anonymous clients. `MQTT_USER` and `MQTT_PASSWORD` are reserved and unused.
 - OPC UA security mode is `None` when that optional path is enabled. That matches the lab simulator and is not a plant connection.
 - Modbus RTU is not implemented (serial / USB horizon only).
