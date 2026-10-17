@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Modbus TCP slave that exposes pump telemetry as holding registers.
+"""Modbus TCP slave that exposes motor telemetry as holding registers.
 
 Register map (unit id 1):
-  HR0  temperature * 10   (e.g. 702  → 70.2 °C)
-  HR1  pressure * 100     (e.g. 250  → 2.50 bar)
-  HR2  vibration * 100    (e.g. 100  → 1.00)
+  HR0  temperature * 10   (e.g. 550  → 55.0 °C)
+  HR1  pressure * 100     (e.g. 100  → 1.00 bar)
+  HR2  vibration * 100    (e.g. 80   → 0.80)
 """
 
 from __future__ import annotations
@@ -30,10 +30,10 @@ PORT = int(os.environ.get("MODBUS_BIND_PORT", "502"))
 UNIT_ID = int(os.environ.get("MODBUS_UNIT_ID", "1"))
 UPDATE_INTERVAL_S = float(os.environ.get("UPDATE_INTERVAL_S", "1"))
 
-# Same nominal points and soft-noise shape as mqtt-simulator.
-BASE_TEMPERATURE = 70.0
-BASE_PRESSURE = 2.5
-BASE_VIBRATION = 1.0
+# Nominal points of critical-motor-01; soft-noise shape matches mqtt-simulator.
+MOTOR_TEMPERATURE = 55.0
+MOTOR_PRESSURE = 1.0
+MOTOR_VIBRATION = 0.8
 
 # Holding-register function code used by pymodbus setValues / getValues.
 HR_FC = 3
@@ -60,9 +60,9 @@ def soft_noise(t: float, base: float, amplitude: float, period_s: float) -> floa
 
 
 def scaled_registers(elapsed_s: float) -> list[int]:
-    temperature = soft_noise(elapsed_s, BASE_TEMPERATURE, 0.4, 300.0)
-    pressure = soft_noise(elapsed_s, BASE_PRESSURE, 0.03, 240.0)
-    vibration = soft_noise(elapsed_s, BASE_VIBRATION, 0.02, 180.0)
+    temperature = soft_noise(elapsed_s, MOTOR_TEMPERATURE, 0.4, 300.0)
+    pressure = soft_noise(elapsed_s, MOTOR_PRESSURE, 0.03, 240.0)
+    vibration = soft_noise(elapsed_s, MOTOR_VIBRATION, 0.02, 180.0)
     return [
         int(round(temperature * 10)),
         int(round(pressure * 100)),
