@@ -119,3 +119,4 @@ Modbus values arrive as integers in holding registers and are scaled in Node-RED
 - Mosquitto still allows anonymous clients. `MQTT_USER` and `MQTT_PASSWORD` are reserved and unused.
 - OPC UA security mode is `None` when that optional path is enabled. That matches the lab simulator and is not a plant connection.
 - Modbus RTU is not implemented (serial / USB horizon only).
+- After `docker compose stop modbus-slave`, the Node-RED Modbus client does not reconnect on its own; run `docker compose restart node-red-ingestion`. See [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md#reconnecting-after-the-slave-stops).

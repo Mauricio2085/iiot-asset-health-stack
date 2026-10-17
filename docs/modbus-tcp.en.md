@@ -68,6 +68,18 @@ The `asset_id` in the payload must match the asset segment of the topic, or the 
 
 If step 3 fails, confirm `modbus-slave` is healthy and that Node-RED finished installing `node-red-contrib-modbus` (first start can take a minute).
 
+### Reconnecting after the slave stops
+
+If `modbus-slave` is stopped with `docker compose stop`, the Node-RED Modbus client does not reconnect on its own when the slave comes back. While the container is stopped, Docker DNS no longer resolves `modbus-slave` and the client gets `ENOTFOUND`. `node-red-contrib-modbus` 5.45.2 does not list that code among the errors that trigger a retry, so the client stays in its initial state and stops reading.
+
+Meanwhile `critical-motor-01` shows as `stale` in `asset_condition`. To recover:
+
+```bash
+docker compose restart node-red-ingestion
+```
+
+In testing, `docker compose restart modbus-slave` recovered on its own because the slave is back within a couple of seconds; a longer stop leaves the client stuck. Automatic reconnection is pending for the OT boundary phase.
+
 ## RTU (horizon)
 
 The same register map and scaling would apply over Modbus RTU (`/dev/ttyUSB0`, baud, parity, stop bits). This stack does not implement RTU yet: no serial device is mounted into Compose, and there is no RTU client tab in Node-RED. When a USB adapter is available, the ingestion client type would switch from TCP to serial; the MQTT contract would stay the same.

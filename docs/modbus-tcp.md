@@ -68,6 +68,18 @@ El `asset_id` del payload tiene que coincidir con el segmento de activo del tóp
 
 Si el paso 3 falla, confirma que `modbus-slave` está sano y que Node-RED terminó de instalar `node-red-contrib-modbus` (el primer arranque puede tardar un minuto).
 
+### Reconexión después de detener el slave
+
+Si `modbus-slave` se detiene con `docker compose stop`, el cliente Modbus de Node-RED no se reconecta solo cuando el slave vuelve. Con el contenedor detenido, el DNS de Docker deja de resolver `modbus-slave` y el cliente recibe `ENOTFOUND`. `node-red-contrib-modbus` 5.45.2 no incluye ese código entre los errores que disparan un reintento, así que el cliente queda detenido en su estado inicial y no vuelve a leer.
+
+Mientras tanto, `critical-motor-01` aparece como `stale` en `asset_condition`. Para recuperarlo:
+
+```bash
+docker compose restart node-red-ingestion
+```
+
+En las pruebas, `docker compose restart modbus-slave` se recuperó solo, porque el slave vuelve en un par de segundos; una parada más larga deja el cliente atascado. La reconexión automática queda pendiente para la fase de frontera OT.
+
 ## RTU (horizonte)
 
 El mismo mapa de registros y escalado aplicaría sobre Modbus RTU (`/dev/ttyUSB0`, baud, paridad, stop bits). Este stack todavía no implementa RTU: Compose no monta un dispositivo serial y no hay tab cliente RTU en Node-RED. Cuando haya un adaptador USB, el cliente de ingesta pasaría de TCP a serial; el contrato MQTT se mantendría.
