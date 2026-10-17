@@ -39,8 +39,6 @@ services:
       - TZ=America/Bogota
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883
-      - MQTT_TOPIC=plant-01/area-01/critical-pump-01/telemetry
-      - ASSET_ID=critical-pump-01
       - PUBLISH_INTERVAL_S=5
     depends_on:
       - mosquitto

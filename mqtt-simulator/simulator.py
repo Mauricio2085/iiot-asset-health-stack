@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish lab pump telemetry to Mosquitto every 5 seconds."""
+"""Publish lab telemetry for critical assets to Mosquitto every 5 seconds."""
 
 from __future__ import annotations
 
@@ -17,16 +17,26 @@ import paho.mqtt.client as mqtt
 
 BROKER_HOST = os.environ.get("MQTT_HOST", "mosquitto")
 BROKER_PORT = int(os.environ.get("MQTT_PORT", "1883"))
-TOPIC = os.environ.get(
-    "MQTT_TOPIC", "plant-01/area-01/critical-pump-01/telemetry"
-)
-ASSET_ID = os.environ.get("ASSET_ID", "critical-pump-01")
 INTERVAL_S = float(os.environ.get("PUBLISH_INTERVAL_S", "5"))
 
-# Nominal operating points (same order of magnitude as the OPC UA lab payload).
-BASE_TEMPERATURE = 70.0
-BASE_PRESSURE = 2.5
-BASE_VIBRATION = 1.0
+# Same JSON contract per asset; distinct nominal points so Grafana shows
+# different "personalities". Motor arrives via Modbus, not this process.
+ASSETS = [
+    {
+        "asset_id": "critical-pump-01",
+        "topic": "plant-01/area-01/critical-pump-01/telemetry",
+        "temperature": 70.0,
+        "pressure": 2.5,
+        "vibration": 1.0,
+    },
+    {
+        "asset_id": "critical-compressor-01",
+        "topic": "plant-01/area-01/critical-compressor-01/telemetry",
+        "temperature": 85.0,
+        "pressure": 6.0,
+        "vibration": 1.5,
+    },
+]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,16 +60,16 @@ def soft_noise(t: float, base: float, amplitude: float, period_s: float) -> floa
     return base + drift + random.uniform(-amplitude * 0.05, amplitude * 0.05)
 
 
-def build_payload(elapsed_s: float) -> dict:
+def build_payload(elapsed_s: float, asset: dict) -> dict:
     return {
-        "asset_id": ASSET_ID,
+        "asset_id": asset["asset_id"],
         "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace(
             "+00:00", "Z"
         ),
         # Mild process drift (~±0.4 °C / ±0.03 bar / ±0.02), not lab-demo swings.
-        "temperature": round(soft_noise(elapsed_s, BASE_TEMPERATURE, 0.4, 300.0), 2),
-        "pressure": round(soft_noise(elapsed_s, BASE_PRESSURE, 0.03, 240.0), 3),
-        "vibration": round(soft_noise(elapsed_s, BASE_VIBRATION, 0.02, 180.0), 3),
+        "temperature": round(soft_noise(elapsed_s, asset["temperature"], 0.4, 300.0), 2),
+        "pressure": round(soft_noise(elapsed_s, asset["pressure"], 0.03, 240.0), 3),
+        "vibration": round(soft_noise(elapsed_s, asset["vibration"], 0.02, 180.0), 3),
         "quality": "good",
     }
 
@@ -88,9 +98,10 @@ def main() -> int:
             time.sleep(2)
 
     client.loop_start()
+    topics = ", ".join(asset["topic"] for asset in ASSETS)
     log.info(
-        "publishing QoS 1 to %s every %ss via %s:%s",
-        TOPIC,
+        "publishing QoS 1 to [%s] every %ss via %s:%s",
+        topics,
         INTERVAL_S,
         BROKER_HOST,
         BROKER_PORT,
@@ -102,13 +113,19 @@ def main() -> int:
     while _running:
         now = time.monotonic()
         if now >= next_publish:
-            payload = build_payload(now - started)
-            body = json.dumps(payload, separators=(",", ":"))
-            info = client.publish(TOPIC, body, qos=1)
-            if info.rc != mqtt.MQTT_ERR_SUCCESS:
-                log.error("publish failed rc=%s", info.rc)
-            else:
-                log.info("published %s", body)
+            elapsed = now - started
+            for asset in ASSETS:
+                payload = build_payload(elapsed, asset)
+                body = json.dumps(payload, separators=(",", ":"))
+                info = client.publish(asset["topic"], body, qos=1)
+                if info.rc != mqtt.MQTT_ERR_SUCCESS:
+                    log.error(
+                        "publish failed asset=%s rc=%s",
+                        asset["asset_id"],
+                        info.rc,
+                    )
+                else:
+                    log.info("published %s", body)
             next_publish = now + INTERVAL_S
         time.sleep(0.2)
 
