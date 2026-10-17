@@ -1,14 +1,22 @@
 ## Overview
 
-End-to-end industrial telemetry pipeline for critical asset health monitoring. Simulated pumps publish temperature, pressure, and vibration. The stack ingests those signals, checks the payload, stores them as a time series, and charts them.
+End-to-end industrial telemetry pipeline for critical asset health monitoring. Three simulated critical assets (a pump, a compressor, and a motor) publish temperature, pressure, and vibration. The stack ingests those signals, checks the payload, stores them as a time series, and charts them.
 
 ### OT sources
 
-| Source | Role | Asset | Default |
+| Source | Role | Assets | Default |
 | --- | --- | --- | --- |
-| `mqtt-simulator` | Publishes the telemetry JSON straight to Mosquitto | `critical-pump-01` | On |
-| `modbus-slave` + Node-RED Modbus tab | Modbus TCP holding registers → scaled JSON → MQTT | `modbus-pump-01` | On |
+| `mqtt-simulator` | Publishes the telemetry JSON straight to Mosquitto | `critical-pump-01`, `critical-compressor-01` | On |
+| `modbus-slave` + Node-RED Modbus tab | Modbus TCP holding registers → scaled JSON → MQTT | `critical-motor-01` | On |
 | Prosys OPC UA | Optional Windows-host simulator → Node-RED OPC UA tab | `critical-pump-01` | Off |
+
+Each `asset_id` names the equipment. The source column only says how its readings reach the edge.
+
+| Asset | Nominal temperature | Nominal pressure | Nominal vibration |
+| --- | --- | --- | --- |
+| `critical-pump-01` | ~70 °C | ~2.5 bar | ~1.0 |
+| `critical-compressor-01` | ~85 °C | ~6.0 bar | ~1.5 |
+| `critical-motor-01` | ~55 °C | ~1.0 bar | ~0.8 |
 
 Lab notes: [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
 
@@ -54,13 +62,13 @@ docker compose up -d --build
 
 Change the passwords in `.env` before using the stack outside this machine. First start of `node-red-ingestion` may take a minute while it installs Modbus nodes.
 
-Open Grafana at `http://localhost:3001` and select **Asset Health**. Within about a minute you should see `critical-pump-01` and `modbus-pump-01`.
+Open Grafana at `http://localhost:3001` and select **Asset Health**. Within about a minute you should see `critical-pump-01`, `critical-compressor-01`, and `critical-motor-01`.
 
 ### Optional OT source: Prosys OPC UA
 
 The OPC UA ingestion tab is disabled by default so it does not compete with `mqtt-simulator` on the same topic. To use Prosys instead:
 
-1. Stop or remove the simulator: `docker compose stop mqtt-simulator` (or scale it to 0).
+1. Stop or remove the simulator: `docker compose stop mqtt-simulator` (or scale it to 0). This also stops `critical-compressor-01`, which only comes from the simulator.
 2. Run Prosys on the Windows host and set `OPCUA_ENDPOINT` in `.env`.
 3. Enable the **OPC UA Ingestion** tab in the ingestion editor at `http://localhost:1881`.
 
@@ -87,7 +95,7 @@ Modbus values arrive as integers in holding registers and are scaled in Node-RED
 
 ### Current limits
 
-- Two lab assets by default (`critical-pump-01`, `modbus-pump-01`); `quality` is fixed to `good`.
+- Three lab assets in one plant and area; `quality` is fixed to `good`.
 - Mosquitto still allows anonymous clients. `MQTT_USER` and `MQTT_PASSWORD` are reserved and unused.
 - OPC UA security mode is `None` when that optional path is enabled. That matches the lab simulator and is not a plant connection.
 - Modbus RTU is not implemented (serial / USB horizon only).
