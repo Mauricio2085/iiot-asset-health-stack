@@ -26,7 +26,17 @@ Vibration is velocity in mm/s RMS. Reference thresholds follow ISO 10816-3 for m
 
 Run `docker compose restart modbus-slave` to start the cycle from minute 0. Details: [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md#unbalance-scenario).
 
-Lab notes: [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
+### Asset condition
+
+TimescaleDB holds the engineering limits of each asset in `asset_limits` and exposes the `asset_condition` view: one row per asset with `normal`, `warning`, `alarm`, or `stale`. Each signal is judged on its 1-minute average, the asset takes the worst state of its signals, and an asset with no readings in the last minute is `stale`.
+
+```bash
+docker compose exec -T timescaledb sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT asset_id, condition, vibration_avg, samples_1m, last_seen FROM asset_condition;"'
+```
+
+During the motor scenario, `critical-motor-01` moves from `normal` to `warning` and `alarm`, then back after maintenance. Limits, rules, and how to change a threshold: [docs/asset-condition.en.md](docs/asset-condition.en.md).
+
+Lab notes: [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/asset-condition.en.md](docs/asset-condition.en.md) ([español](docs/asset-condition.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
 
 ### Pipeline
 
@@ -104,7 +114,8 @@ Modbus values arrive as integers in holding registers and are scaled in Node-RED
 ### Current limits
 
 - Three lab assets in one plant and area; `quality` is fixed to `good`.
-- Warning and alarm thresholds are documented but not evaluated yet: nothing in the stack classifies a reading as normal, warning, or alarm.
+- Asset condition is computed in TimescaleDB but not shown in Grafana yet, and nothing sends notifications.
+- Database changes after the first start are applied by hand with `psql`; there is no migration tool.
 - Mosquitto still allows anonymous clients. `MQTT_USER` and `MQTT_PASSWORD` are reserved and unused.
 - OPC UA security mode is `None` when that optional path is enabled. That matches the lab simulator and is not a plant connection.
 - Modbus RTU is not implemented (serial / USB horizon only).
