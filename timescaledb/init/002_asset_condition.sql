@@ -23,21 +23,38 @@ CREATE TABLE IF NOT EXISTS asset_limits (
         CHECK (warning_low < warning_high)
 );
 
+-- Columns added after the table first shipped go through ALTER TABLE, because
+-- CREATE TABLE IF NOT EXISTS leaves an existing table untouched.
+ALTER TABLE asset_limits ADD COLUMN IF NOT EXISTS nominal DOUBLE PRECISION;
+
+-- PostgreSQL has no ADD CONSTRAINT IF NOT EXISTS.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'asset_limits_nominal_check'
+    ) THEN
+        ALTER TABLE asset_limits ADD CONSTRAINT asset_limits_nominal_check
+            CHECK (nominal > warning_low AND nominal < warning_high);
+    END IF;
+END
+$$;
+
 -- critical-motor-01 has no pressure row on purpose: a motor has no process
 -- pressure, so that signal is stored but never evaluated.
 INSERT INTO asset_limits
-    (asset_id, signal, unit, alarm_low, warning_low, warning_high, alarm_high, reference)
+    (asset_id, signal, unit, nominal, alarm_low, warning_low, warning_high, alarm_high, reference)
 VALUES
-    ('critical-pump-01',       'temperature', '°C',   NULL, NULL,  80.0,  90.0, 'lab default'),
-    ('critical-pump-01',       'pressure',    'bar',  1.5,  2.0,   3.0,   3.5,  'lab default'),
-    ('critical-pump-01',       'vibration',   'mm/s', NULL, NULL,  2.8,   4.5,  'ISO 10816-3'),
-    ('critical-compressor-01', 'temperature', '°C',   NULL, NULL,  95.0,  105.0, 'lab default'),
-    ('critical-compressor-01', 'pressure',    'bar',  4.5,  5.0,   7.0,   7.5,  'lab default'),
-    ('critical-compressor-01', 'vibration',   'mm/s', NULL, NULL,  2.8,   4.5,  'ISO 10816-3'),
-    ('critical-motor-01',      'temperature', '°C',   NULL, NULL,  80.0,  90.0, 'lab default'),
-    ('critical-motor-01',      'vibration',   'mm/s', NULL, NULL,  2.8,   4.5,  'ISO 10816-3')
+    ('critical-pump-01',       'temperature', '°C',   70.0, NULL, NULL,  80.0,  90.0,  'lab default'),
+    ('critical-pump-01',       'pressure',    'bar',  2.5,  1.5,  2.0,   3.0,   3.5,   'lab default'),
+    ('critical-pump-01',       'vibration',   'mm/s', 1.0,  NULL, NULL,  2.8,   4.5,   'ISO 10816-3'),
+    ('critical-compressor-01', 'temperature', '°C',   85.0, NULL, NULL,  95.0,  105.0, 'lab default'),
+    ('critical-compressor-01', 'pressure',    'bar',  6.0,  4.5,  5.0,   7.0,   7.5,   'lab default'),
+    ('critical-compressor-01', 'vibration',   'mm/s', 1.5,  NULL, NULL,  2.8,   4.5,   'ISO 10816-3'),
+    ('critical-motor-01',      'temperature', '°C',   55.0, NULL, NULL,  80.0,  90.0,  'lab default'),
+    ('critical-motor-01',      'vibration',   'mm/s', 0.8,  NULL, NULL,  2.8,   4.5,   'ISO 10816-3')
 ON CONFLICT (asset_id, signal) DO UPDATE SET
     unit         = EXCLUDED.unit,
+    nominal      = EXCLUDED.nominal,
     alarm_low    = EXCLUDED.alarm_low,
     warning_low  = EXCLUDED.warning_low,
     warning_high = EXCLUDED.warning_high,
@@ -47,6 +64,8 @@ ON CONFLICT (asset_id, signal) DO UPDATE SET
 -- One row per asset that has limits. Each signal is judged on its 1-minute
 -- average; the asset condition is the worst signal state, or 'stale' when no
 -- reading arrived in that minute. Limits are inclusive.
+-- Limit usage is the share of the margin between nominal and the alarm limit
+-- that the average has consumed: 0 % at nominal, 100 % or more in alarm.
 -- CREATE OR REPLACE VIEW can only append columns: renaming or reordering
 -- existing ones needs DROP VIEW first.
 CREATE OR REPLACE VIEW asset_condition AS
@@ -71,7 +90,14 @@ evaluated AS (
                WHEN v.value >= l.alarm_high   OR v.value <= l.alarm_low   THEN 'alarm'
                WHEN v.value >= l.warning_high OR v.value <= l.warning_low THEN 'warning'
                WHEN v.value IS NOT NULL                                   THEN 'normal'
-           END AS state
+           END AS state,
+           CASE WHEN l.nominal IS NOT NULL THEN
+               GREATEST(
+                   0,
+                   (v.value - l.nominal) / NULLIF(l.alarm_high - l.nominal, 0),
+                   (l.nominal - v.value) / NULLIF(l.nominal - l.alarm_low, 0)
+               )
+           END AS usage
     FROM recent r
     CROSS JOIN LATERAL (VALUES
         ('temperature', r.temperature),
@@ -86,7 +112,9 @@ per_asset AS (
            max(CASE state WHEN 'alarm' THEN 2 WHEN 'warning' THEN 1 WHEN 'normal' THEN 0 END) AS worst,
            max(state) FILTER (WHERE signal = 'temperature') AS temperature_state,
            max(state) FILTER (WHERE signal = 'pressure')    AS pressure_state,
-           max(state) FILTER (WHERE signal = 'vibration')   AS vibration_state
+           max(state) FILTER (WHERE signal = 'vibration')   AS vibration_state,
+           (array_agg(signal ORDER BY usage DESC NULLS LAST))[1] AS worst_signal,
+           max(usage) AS usage
     FROM evaluated
     GROUP BY asset_id
 )
@@ -105,7 +133,11 @@ SELECT e.asset_id,
        p.vibration_state,
        COALESCE(r.samples_1m, 0)        AS samples_1m,
        last_reading.time                AS last_seen,
-       now()                            AS evaluated_at
+       now()                            AS evaluated_at,
+       p.worst_signal,
+       round((p.usage * 100)::numeric, 1) AS limit_usage_pct,
+       -- 12 expected readings: every source publishes once every 5 s.
+       round(LEAST(COALESCE(r.samples_1m, 0), 12) * 100.0 / 12, 0) AS data_availability_pct
 FROM expected e
 LEFT JOIN recent r
     ON r.asset_id = e.asset_id
