@@ -80,6 +80,8 @@ docker compose up -d --build
 
 Change the passwords in `.env` before using the stack outside this machine. First start of `node-red-ingestion` may take a minute while it installs Modbus nodes.
 
+Services use `restart: on-failure`: Docker restarts a container that crashes, but does not start the stack when Docker itself starts. After a reboot, run `docker compose up -d` again. On Docker Desktop with WSL, containers started by Docker at boot can come up before the WSL files exist, with empty bind mounts: TimescaleDB fails to start and Grafana loads no dashboard.
+
 Open Grafana at `http://localhost:3001` and select **Asset Health**. Within about a minute you should see `critical-pump-01`, `critical-compressor-01`, and `critical-motor-01`.
 
 ### Optional OT source: Prosys OPC UA
