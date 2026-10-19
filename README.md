@@ -34,7 +34,19 @@ TimescaleDB holds the engineering limits of each asset in `asset_limits` and exp
 docker compose exec -T timescaledb sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT asset_id, condition, vibration_avg, samples_1m, last_seen FROM asset_condition;"'
 ```
 
-During the motor scenario, `critical-motor-01` moves from `normal` to `warning` and `alarm`, then back after maintenance. Limits, rules, and how to change a threshold: [docs/asset-condition.en.md](docs/asset-condition.en.md).
+During the motor scenario, `critical-motor-01` moves from `normal` to `warning` and `alarm`, then back after maintenance. Limits, rules, margin used, and how to change a threshold: [docs/asset-condition.en.md](docs/asset-condition.en.md).
+
+### Dashboard
+
+**Asset Health** in Grafana reads top to bottom, one question per band:
+
+1. **What needs attention?** Counters of assets in alarm, in warning, and without data, then one tile per asset with its condition, the margin used, and the signal behind it ("87 % of margin used · vibration").
+2. **Why, and where is it heading?** One row per asset with vibration, temperature, and pressure trends. Warning (amber) and alarm (red) limits are dashed lines read from `asset_limits`, so changing a limit in the database moves the line.
+3. **Detail.** A table of `asset_condition`: 1-minute averages, the state of each signal, data availability, and the time of the last reading.
+
+Colors follow ISA-101 for high-performance HMIs: `normal` is gray, and color is kept for abnormal states (amber warning, red alarm, purple no data). With every asset healthy the screen has no color at all.
+
+The dashboard is provisioned from `grafana/dashboards/asset-health.json` and cannot be saved from the Grafana UI. Edit the file instead; Grafana reloads it within about 10 seconds, and the browser shows the change after a page refresh. Rows and tiles repeat over the assets in `asset_limits`, so a new asset shows up without editing the JSON.
 
 Lab notes: [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/asset-condition.en.md](docs/asset-condition.en.md) ([español](docs/asset-condition.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
 
@@ -82,7 +94,7 @@ Change the passwords in `.env` before using the stack outside this machine. Firs
 
 Services use `restart: on-failure`: Docker restarts a container that crashes, but does not start the stack when Docker itself starts. After a reboot, run `docker compose up -d` again. On Docker Desktop with WSL, containers started by Docker at boot can come up before the WSL files exist, with empty bind mounts: TimescaleDB fails to start and Grafana loads no dashboard.
 
-Open Grafana at `http://localhost:3001` and select **Asset Health**. Within about a minute you should see `critical-pump-01`, `critical-compressor-01`, and `critical-motor-01`.
+Open Grafana at `http://localhost:3001` and select **Asset Health**. Within about a minute you should see tiles and trend rows for `critical-pump-01`, `critical-compressor-01`, and `critical-motor-01`.
 
 ### Optional OT source: Prosys OPC UA
 
@@ -116,7 +128,8 @@ Modbus values arrive as integers in holding registers and are scaled in Node-RED
 ### Current limits
 
 - Three lab assets in one plant and area; `quality` is fixed to `good`.
-- Asset condition is computed in TimescaleDB but not shown in Grafana yet, and nothing sends notifications.
+- Nothing sends notifications: a warning or alarm is only visible on the dashboard.
+- Grafana 12.0.4 picks the Y-axis tick step on its own; there is no fixed step per panel.
 - Database changes after the first start are applied by hand with `psql`; there is no migration tool.
 - Mosquitto still allows anonymous clients. `MQTT_USER` and `MQTT_PASSWORD` are reserved and unused.
 - OPC UA security mode is `None` when that optional path is enabled. That matches the lab simulator and is not a plant connection.
