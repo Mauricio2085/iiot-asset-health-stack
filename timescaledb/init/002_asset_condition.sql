@@ -136,8 +136,9 @@ SELECT e.asset_id,
        now()                            AS evaluated_at,
        p.worst_signal,
        round((p.usage * 100)::numeric, 1) AS limit_usage_pct,
-       -- 12 expected readings: every source publishes once every 5 s.
-       round(LEAST(COALESCE(r.samples_1m, 0), 12) * 100.0 / 12, 0) AS data_availability_pct
+       -- Sources publish every 5 s, so a 1-minute window catches 11 or 12
+       -- readings depending on timing; 11 already counts as full availability.
+       round(LEAST(COALESCE(r.samples_1m, 0) * 100.0 / 11, 100), 0) AS data_availability_pct
 FROM expected e
 LEFT JOIN recent r
     ON r.asset_id = e.asset_id
