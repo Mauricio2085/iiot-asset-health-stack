@@ -205,82 +205,19 @@
       ]
     },
     {
-      "id": 1,
-      "type": "timeseries",
-      "title": "Temperature",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 9 },
-      "interval": "5s",
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "timescaledb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "min": 0,
-          "max": 90,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "timescaledb"
-          },
-          "format": "time_series",
-          "editorMode": "code",
-          "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), asset_id AS metric, avg(temperature) AS value\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1, 2\nORDER BY 1"
-        }
-      ]
+      "id": 20,
+      "type": "row",
+      "title": "$asset",
+      "repeat": "asset",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "panels": []
     },
     {
-      "id": 2,
-      "type": "timeseries",
-      "title": "Pressure",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 9 },
-      "interval": "5s",
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "timescaledb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "timescaledb"
-          },
-          "format": "time_series",
-          "editorMode": "code",
-          "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), asset_id AS metric, avg(pressure) AS value\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1, 2\nORDER BY 1"
-        }
-      ]
-    },
-    {
-      "id": 3,
+      "id": 21,
       "type": "timeseries",
       "title": "Vibration",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 9 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 },
       "interval": "5s",
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -288,6 +225,10 @@
       },
       "fieldConfig": {
         "defaults": {
+          "unit": "suffix: mm/s",
+          "decimals": 2,
+          "min": 0,
+          "color": { "mode": "fixed", "fixedColor": "#C7D0D9" },
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
@@ -295,7 +236,28 @@
             "spanNulls": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "warning.*" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#F5A623" } },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "alarm.*" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#E02F44" } },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
       "targets": [
         {
@@ -307,15 +269,176 @@
           "format": "time_series",
           "editorMode": "code",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), asset_id AS metric, avg(vibration) AS value\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1, 2\nORDER BY 1"
+          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), avg(vibration) AS vibration\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1\nORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT t.time, x.name AS metric, x.value\nFROM asset_limits l\nCROSS JOIN (VALUES ($__timeFrom()::timestamptz), ($__timeTo()::timestamptz)) AS t (time)\nCROSS JOIN LATERAL (VALUES\n    ('alarm high', l.alarm_high),\n    ('warning high', l.warning_high),\n    ('warning low', l.warning_low),\n    ('alarm low', l.alarm_low)\n) AS x (name, value)\nWHERE l.asset_id IN ($asset) AND l.signal = 'vibration' AND x.value IS NOT NULL\nORDER BY 1"
         }
       ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Temperature",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 10 },
+      "interval": "5s",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 1,
+          "min": 0,
+          "color": { "mode": "fixed", "fixedColor": "#C7D0D9" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "warning.*" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#F5A623" } },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "alarm.*" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#E02F44" } },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), avg(temperature) AS temperature\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1\nORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT t.time, x.name AS metric, x.value\nFROM asset_limits l\nCROSS JOIN (VALUES ($__timeFrom()::timestamptz), ($__timeTo()::timestamptz)) AS t (time)\nCROSS JOIN LATERAL (VALUES\n    ('alarm high', l.alarm_high),\n    ('warning high', l.warning_high),\n    ('warning low', l.warning_low),\n    ('alarm low', l.alarm_low)\n) AS x (name, value)\nWHERE l.asset_id IN ($asset) AND l.signal = 'temperature' AND x.value IS NOT NULL\nORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Pressure",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 10 },
+      "interval": "5s",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: bar",
+          "decimals": 2,
+          "min": 0,
+          "color": { "mode": "fixed", "fixedColor": "#C7D0D9" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "warning.*" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#F5A623" } },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "alarm.*" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#E02F44" } },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), avg(pressure) AS pressure\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1\nORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT t.time, x.name AS metric, x.value\nFROM asset_limits l\nCROSS JOIN (VALUES ($__timeFrom()::timestamptz), ($__timeTo()::timestamptz)) AS t (time)\nCROSS JOIN LATERAL (VALUES\n    ('alarm high', l.alarm_high),\n    ('warning high', l.warning_high),\n    ('warning low', l.warning_low),\n    ('alarm low', l.alarm_low)\n) AS x (name, value)\nWHERE l.asset_id IN ($asset) AND l.signal = 'pressure' AND x.value IS NOT NULL\nORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "Detail",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "panels": []
     },
     {
       "id": 4,
       "type": "table",
       "title": "Latest reading per asset",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 17 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 19 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "timescaledb"
