@@ -5,10 +5,13 @@ Register map (unit id 1):
   HR0  temperature * 10   (e.g. 550  → 55.0 °C)
   HR1  pressure * 100     (e.g. 100  → 1.00 bar)
   HR2  vibration * 100    (e.g. 80   → 0.80 mm/s RMS)
+  HR3  device status      (0 good, 1 uncertain, 2 bad)
 
 The motor runs a repeating unbalance scenario: normal operation, a
 progressive vibration ramp through warning (2.8 mm/s) and alarm (4.5 mm/s),
 a sustained alarm, then a simulated rotor balancing that restarts the cycle.
+During normal operation the vibration transmitter also fails briefly: its
+reading saturates at the top of its range and the device flags it as bad.
 """
 
 from __future__ import annotations
@@ -48,6 +51,17 @@ CYCLE_S = NORMAL_S + RAMP_S + ALARM_HOLD_S
 PEAK_VIBRATION = 5.0
 TEMPERATURE_RISE = 1.5
 
+# Vibration transmitter fault, inside the normal phase so it does not overlap
+# the unbalance ramp. A broken 4-20 mA loop drives the reading to the top of
+# the sensor range (NAMUR NE43 treats over 21 mA as a failure).
+SENSOR_FAULT_START_S = 60
+SENSOR_FAULT_S = 30
+SATURATED_VIBRATION = 25.0
+
+STATUS_GOOD = 0
+STATUS_UNCERTAIN = 1
+STATUS_BAD = 2
+
 # Holding-register function code used by pymodbus setValues / getValues.
 HR_FC = 3
 
@@ -84,6 +98,15 @@ def unbalance_state(elapsed_s: float) -> tuple[str, float]:
     return "alarm-hold", 1.0
 
 
+def sensor_fault(elapsed_s: float) -> bool:
+    t = elapsed_s % CYCLE_S
+    return SENSOR_FAULT_START_S <= t < SENSOR_FAULT_START_S + SENSOR_FAULT_S
+
+
+def scenario_phase(elapsed_s: float) -> str:
+    return "sensor-fault" if sensor_fault(elapsed_s) else unbalance_state(elapsed_s)[0]
+
+
 def scaled_registers(elapsed_s: float) -> list[int]:
     _, severity = unbalance_state(elapsed_s)
     temperature = soft_noise(
@@ -96,10 +119,15 @@ def scaled_registers(elapsed_s: float) -> list[int]:
         0.02 + 0.08 * severity,
         180.0,
     )
+    status = STATUS_GOOD
+    if sensor_fault(elapsed_s):
+        vibration = SATURATED_VIBRATION
+        status = STATUS_BAD
     return [
         int(round(temperature * 10)),
         int(round(pressure * 100)),
         int(round(vibration * 100)),
+        status,
     ]
 
 
@@ -109,10 +137,12 @@ def update_loop(context: ModbusServerContext) -> None:
     last_phase = None
     while _running:
         elapsed = time.monotonic() - started
-        phase, _ = unbalance_state(elapsed)
+        phase = scenario_phase(elapsed)
         if phase != last_phase:
-            if phase == "normal" and last_phase is not None:
+            if last_phase == "alarm-hold":
                 log.info("scenario: maintenance balanced the rotor, back to normal")
+            elif last_phase == "sensor-fault":
+                log.info("scenario: vibration transmitter recovered, back to normal")
             else:
                 log.info("scenario: entering %s", phase)
             last_phase = phase
@@ -122,11 +152,12 @@ def update_loop(context: ModbusServerContext) -> None:
         ticks += 1
         if ticks == 1 or ticks % 30 == 0:
             log.info(
-                "[%s] HR0=%s HR1=%s HR2=%s  (temp=%.1f press=%.2f vib=%.2f)",
+                "[%s] HR0=%s HR1=%s HR2=%s HR3=%s  (temp=%.1f press=%.2f vib=%.2f)",
                 phase,
                 values[0],
                 values[1],
                 values[2],
+                values[3],
                 values[0] / 10.0,
                 values[1] / 100.0,
                 values[2] / 100.0,
@@ -148,7 +179,7 @@ def main() -> int:
     updater.start()
 
     log.info(
-        "Modbus TCP slave on %s:%s unit_id=%s (HR0-HR2 telemetry)",
+        "Modbus TCP slave on %s:%s unit_id=%s (HR0-HR2 telemetry, HR3 status)",
         HOST,
         PORT,
         UNIT_ID,
