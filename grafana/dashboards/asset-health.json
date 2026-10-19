@@ -437,11 +437,72 @@
     {
       "id": 4,
       "type": "table",
-      "title": "Latest reading per asset",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 19 },
+      "title": "Asset condition (1-minute averages)",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 19 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" } },
+          "mappings": [
+            {
+              "type": "special",
+              "options": { "match": "null", "result": { "text": "—", "index": 0 } }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "Condition|.* state" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "basic" } },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "normal": { "text": "normal", "color": "transparent", "index": 0 },
+                      "warning": { "text": "WARNING", "color": "#F5A623", "index": 1 },
+                      "alarm": { "text": "ALARM", "color": "#E02F44", "index": 2 },
+                      "stale": { "text": "NO DATA", "color": "#A352CC", "index": 3 }
+                    }
+                  },
+                  {
+                    "type": "special",
+                    "options": { "match": "null", "result": { "text": "—", "color": "transparent", "index": 4 } }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "Margin used|Data availability" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 1 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Data availability" },
+            "properties": [{ "id": "decimals", "value": 0 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Last reading" },
+            "properties": [{ "id": "unit", "value": "dateTimeAsLocal" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Asset" },
+            "properties": [{ "id": "custom.minWidth", "value": 190 }]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": { "show": false }
       },
       "targets": [
         {
@@ -453,7 +514,7 @@
           "format": "table",
           "editorMode": "code",
           "rawQuery": true,
-          "rawSql": "SELECT DISTINCT ON (asset_id) asset_id, plant, area, time, temperature, pressure, vibration, quality\nFROM sensor_readings\nWHERE asset_id IN ($asset)\nORDER BY asset_id, time DESC"
+          "rawSql": "SELECT asset_id              AS \"Asset\",\n       condition             AS \"Condition\",\n       limit_usage_pct       AS \"Margin used\",\n       worst_signal          AS \"Worst signal\",\n       vibration_avg         AS \"Vibration (mm/s)\",\n       vibration_state       AS \"Vibration state\",\n       temperature_avg       AS \"Temperature (°C)\",\n       temperature_state     AS \"Temperature state\",\n       pressure_avg          AS \"Pressure (bar)\",\n       pressure_state        AS \"Pressure state\",\n       data_availability_pct AS \"Data availability\",\n       last_seen             AS \"Last reading\"\nFROM asset_condition\nWHERE asset_id IN ($asset)\nORDER BY asset_id"
         }
       ]
     }
