@@ -16,7 +16,7 @@
           "type": "grafana-postgresql-datasource",
           "uid": "timescaledb"
         },
-        "query": "SELECT DISTINCT asset_id FROM sensor_readings ORDER BY 1",
+        "query": "SELECT DISTINCT asset_id FROM asset_limits ORDER BY 1",
         "refresh": 2,
         "multi": true,
         "includeAll": true,
@@ -26,10 +26,189 @@
   },
   "panels": [
     {
+      "id": 10,
+      "type": "stat",
+      "title": "Assets in alarm",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#3A3F45", "value": null },
+              { "color": "#E02F44", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) FILTER (WHERE condition = 'alarm') AS alarm\nFROM asset_condition"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Assets in warning",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#3A3F45", "value": null },
+              { "color": "#F5A623", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) FILTER (WHERE condition = 'warning') AS warning\nFROM asset_condition"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Assets without data",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#3A3F45", "value": null },
+              { "color": "#A352CC", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) FILTER (WHERE condition = 'stale') AS stale\nFROM asset_condition"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "$asset",
+      "repeat": "asset",
+      "repeatDirection": "h",
+      "maxPerRow": 3,
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 4 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#3A3F45" },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "NORMAL", "color": "#3A3F45", "index": 0 },
+                "1": { "text": "WARNING", "color": "#F5A623", "index": 1 },
+                "2": { "text": "ALARM", "color": "#E02F44", "index": 2 },
+                "3": { "text": "NO DATA", "color": "#A352CC", "index": 3 }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescaledb"
+          },
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT now() AS time,\n       COALESCE(limit_usage_pct || ' % of margin used · ' || worst_signal, 'no data in the last minute') AS metric,\n       CASE condition WHEN 'normal' THEN 0 WHEN 'warning' THEN 1 WHEN 'alarm' THEN 2 ELSE 3 END AS value\nFROM asset_condition\nWHERE asset_id IN ($asset)"
+        }
+      ]
+    },
+    {
       "id": 1,
       "type": "timeseries",
       "title": "Temperature",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 9 },
       "interval": "5s",
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -66,7 +245,7 @@
       "id": 2,
       "type": "timeseries",
       "title": "Pressure",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 9 },
       "interval": "5s",
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -101,7 +280,7 @@
       "id": 3,
       "type": "timeseries",
       "title": "Vibration",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 9 },
       "interval": "5s",
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -136,7 +315,7 @@
       "id": 4,
       "type": "table",
       "title": "Latest reading per asset",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 17 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "timescaledb"
