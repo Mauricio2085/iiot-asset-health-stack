@@ -63,7 +63,9 @@ ON CONFLICT (asset_id, signal) DO UPDATE SET
 
 -- One row per asset that has limits. Each signal is judged on its 1-minute
 -- average; the asset condition is the worst signal state, or 'stale' when no
--- reading arrived in that minute. Limits are inclusive.
+-- usable reading arrived in that minute. Limits are inclusive.
+-- Readings with quality 'bad' are kept in sensor_readings but left out of the
+-- averages; 'uncertain' ones are used and counted.
 -- Limit usage is the share of the margin between nominal and the alarm limit
 -- that the average has consumed: 0 % at nominal, 100 % or more in alarm.
 -- CREATE OR REPLACE VIEW can only append columns: renaming or reordering
@@ -75,10 +77,17 @@ WITH expected AS (
 ),
 recent AS (
     SELECT asset_id,
-           count(*)         AS samples_1m,
-           avg(temperature) AS temperature,
-           avg(pressure)    AS pressure,
-           avg(vibration)   AS vibration
+           count(*)                                       AS samples_1m,
+           count(*) FILTER (WHERE quality = 'uncertain')  AS uncertain_1m,
+           count(*) FILTER (WHERE quality = 'bad')        AS bad_1m,
+           CASE
+               WHEN bool_or(quality = 'bad')       THEN 'bad'
+               WHEN bool_or(quality = 'uncertain') THEN 'uncertain'
+               ELSE 'good'
+           END                                            AS data_quality,
+           avg(temperature) FILTER (WHERE quality <> 'bad') AS temperature,
+           avg(pressure)    FILTER (WHERE quality <> 'bad') AS pressure,
+           avg(vibration)   FILTER (WHERE quality <> 'bad') AS vibration
     FROM sensor_readings
     WHERE time > now() - INTERVAL '1 minute'
     GROUP BY asset_id
@@ -91,7 +100,7 @@ evaluated AS (
                WHEN v.value >= l.warning_high OR v.value <= l.warning_low THEN 'warning'
                WHEN v.value IS NOT NULL                                   THEN 'normal'
            END AS state,
-           CASE WHEN l.nominal IS NOT NULL THEN
+           CASE WHEN l.nominal IS NOT NULL AND v.value IS NOT NULL THEN
                GREATEST(
                    0,
                    (v.value - l.nominal) / NULLIF(l.alarm_high - l.nominal, 0),
@@ -138,7 +147,10 @@ SELECT e.asset_id,
        round((p.usage * 100)::numeric, 1) AS limit_usage_pct,
        -- Sources publish every 5 s, so a 1-minute window catches 11 or 12
        -- readings depending on timing; 11 already counts as full availability.
-       round(LEAST(COALESCE(r.samples_1m, 0) * 100.0 / 11, 100), 0) AS data_availability_pct
+       round(LEAST(COALESCE(r.samples_1m, 0) * 100.0 / 11, 100), 0) AS data_availability_pct,
+       COALESCE(r.uncertain_1m, 0)      AS uncertain_1m,
+       COALESCE(r.bad_1m, 0)            AS bad_1m,
+       r.data_quality
 FROM expected e
 LEFT JOIN recent r
     ON r.asset_id = e.asset_id
