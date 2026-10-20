@@ -36,7 +36,8 @@ Rules:
 2. `alarm` when the average reaches an alarm limit, high or low; `warning` when it reaches a warning limit; otherwise `normal`. Limits are inclusive: exactly 2.8 is already `warning`.
 3. A signal without a limits row is not evaluated and its state stays empty.
 4. `condition` is the worst state among the asset's signals.
-5. When the asset has no readings in the last minute, `condition` is `stale` and `last_seen` shows when its latest reading arrived.
+5. When the asset has no usable reading in the last minute, `condition` is `stale` and `last_seen` shows when its latest reading arrived.
+6. Readings with `quality = bad` stay in `sensor_readings` but are left out of the averages and the margin used. `uncertain` readings are used and counted. If every reading of the last minute is `bad`, nothing is left to judge and the asset is `stale`.
 
 | Column | Content |
 | --- | --- |
@@ -50,6 +51,9 @@ Rules:
 | `worst_signal` | Signal with the highest margin used |
 | `limit_usage_pct` | Margin used by `worst_signal` |
 | `data_availability_pct` | Readings in the last minute against the 11 expected, capped at 100 % |
+| `uncertain_1m` | `uncertain` readings in the last minute |
+| `bad_1m` | `bad` readings left out in the last minute |
+| `data_quality` | Worst quality of the last minute: `good`, `uncertain`, or `bad` |
 
 ### Margin used
 
@@ -77,6 +81,33 @@ Measuring from `nominal` instead of from zero matters: a healthy pump at 70 °C 
 
 Sources publish every 5 s, so a 1-minute window catches 11 or 12 readings depending on the exact query time. Eleven already counts as 100 %, so a healthy source does not show 92 %. A real communication problem still shows: 6 readings is 55 % and none is 0 %.
 
+Availability counts every reading that arrived, whatever its quality: it measures communication, not trust.
+
+### Data quality
+
+Three ideas answer different questions:
+
+| Concept | Question | Who knows |
+| --- | --- | --- |
+| Condition | Is the machine healthy? | The database, against the limits |
+| Availability | Did the readings arrive? | The database, counting readings |
+| Quality | Can this number be trusted? | The source: the sensor, the device, or the driver |
+
+Every reading carries `quality`, with the three OPC UA levels: `good`, `uncertain`, or `bad`. The source decides it, the edge translates it, and IT validates it:
+
+- **Source.** The Modbus slave reports a status in HR3; the MQTT simulator plays both device and edge and sets the quality itself.
+- **Edge.** Node-RED maps the HR3 code to the contract vocabulary, and turns an unknown code into `bad`.
+- **IT.** The ETL rejects a message whose quality is missing or outside the vocabulary, and `sensor_readings_quality_check` in `003_reading_quality.sql` does the same for direct inserts.
+
+The demo has one episode per abnormal level:
+
+| Asset | When | Quality | What happens |
+| --- | --- | --- | --- |
+| `critical-motor-01` | Minute 1:00–1:30 of its 13-minute cycle | `bad` | The vibration transmitter saturates at 25 mm/s. The readings are left out, so there is no false alarm |
+| `critical-pump-01` | 2 minutes in every 10, from minute 5 | `uncertain` | The temperature sensor reads 3 °C high. The readings are used, so the margin used rises a little, and they are flagged |
+
+Quality is one value per message, so it covers the three signals at once: when one sensor fails, the source reports the worst quality and the other two signals carry it too. Per-signal quality fits a narrow model with one row per signal, which is planned for the data phase.
+
 ## Query
 
 ```bash
@@ -91,9 +122,12 @@ Scripts in `/docker-entrypoint-initdb.d/` only run when the database is empty. O
 
 ```bash
 docker compose exec -T timescaledb sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/020_asset_condition.sql'
+docker compose exec -T timescaledb sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/030_reading_quality.sql'
 ```
 
-The script is idempotent: it can run several times and always leaves the same result, with no duplicate rows. Schema changes follow these rules so that both new and existing databases end up the same:
+A script that is newly mounted in `docker-compose.yaml` needs `docker compose up -d timescaledb` first, so the container sees it.
+
+Both scripts are idempotent: each can run several times and always leaves the same result, with no duplicate rows. Schema changes follow these rules so that both new and existing databases end up the same:
 
 - `CREATE TABLE IF NOT EXISTS` does not change a table that already exists. Columns added later go through `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, as `nominal` does.
 - PostgreSQL has no `ADD CONSTRAINT IF NOT EXISTS`. New constraints go inside a `DO` block that checks `pg_constraint` first, as `asset_limits_nominal_check` does.
@@ -120,5 +154,7 @@ A direct `UPDATE` in the database also works, but leaves the file and the databa
 
    Each change arrives about 30 s after the reading crosses the threshold, because of the 1-minute average. For the same reason, the motor briefly passes through `warning` on the way down after maintenance.
 
-3. The pump and the compressor stay `normal` for the whole cycle, with margin used near 0 %.
-4. Stop the slave with `docker compose stop modbus-slave`. A minute later the motor is `stale` with `samples_1m = 0`. To recover, run `docker compose start modbus-slave` and then `docker compose restart node-red-ingestion`. See the reconnect note in [modbus-tcp.en.md](modbus-tcp.en.md).
+3. The pump and the compressor stay `normal` for the whole cycle, with margin used near 0 %, except while the pump temperature is `uncertain`.
+4. About one minute after the restart, the motor has `bad_1m` above 0 and `data_quality = bad`, while `condition` stays `normal`.
+5. During the pump calibration episode, the pump has `uncertain_1m` above 0 and `data_quality = uncertain`.
+6. Stop the slave with `docker compose stop modbus-slave`. A minute later the motor is `stale` with `samples_1m = 0`. To recover, run `docker compose start modbus-slave` and then `docker compose restart node-red-ingestion`. See the reconnect note in [modbus-tcp.en.md](modbus-tcp.en.md).
