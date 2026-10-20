@@ -200,7 +200,7 @@
           "format": "time_series",
           "editorMode": "code",
           "rawQuery": true,
-          "rawSql": "SELECT now() AS time,\n       COALESCE(limit_usage_pct || ' % of margin used · ' || worst_signal, 'no data in the last minute') AS metric,\n       CASE condition WHEN 'normal' THEN 0 WHEN 'warning' THEN 1 WHEN 'alarm' THEN 2 ELSE 3 END AS value\nFROM asset_condition\nWHERE asset_id IN ($asset)"
+          "rawSql": "SELECT now() AS time,\n       concat_ws(' · ',\n           COALESCE(limit_usage_pct || ' % of margin used · ' || worst_signal,\n                    CASE WHEN samples_1m > 0 THEN 'no usable data in the last minute' ELSE 'no data in the last minute' END),\n           CASE WHEN uncertain_1m > 0 THEN uncertain_1m || ' uncertain readings' END,\n           CASE WHEN bad_1m > 0 THEN bad_1m || ' bad readings discarded' END\n       ) AS metric,\n       CASE condition WHEN 'normal' THEN 0 WHEN 'warning' THEN 1 WHEN 'alarm' THEN 2 ELSE 3 END AS value\nFROM asset_condition\nWHERE asset_id IN ($asset)"
         }
       ]
     },
@@ -233,7 +233,8 @@
             "drawStyle": "line",
             "lineWidth": 2,
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": false,
+            "insertNulls": 15000
           }
         },
         "overrides": [
@@ -242,7 +243,9 @@
             "properties": [
               { "id": "color", "value": { "mode": "fixed", "fixedColor": "#F5A623" } },
               { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
-              { "id": "custom.lineWidth", "value": 2 }
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.spanNulls", "value": true },
+              { "id": "custom.insertNulls", "value": false }
             ]
           },
           {
@@ -250,7 +253,9 @@
             "properties": [
               { "id": "color", "value": { "mode": "fixed", "fixedColor": "#E02F44" } },
               { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
-              { "id": "custom.lineWidth", "value": 2 }
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.spanNulls", "value": true },
+              { "id": "custom.insertNulls", "value": false }
             ]
           }
         ]
@@ -269,7 +274,7 @@
           "format": "time_series",
           "editorMode": "code",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), avg(vibration) AS vibration\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1\nORDER BY 1"
+          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), avg(vibration) AS vibration\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset) AND quality <> 'bad'\nGROUP BY 1\nORDER BY 1"
         },
         {
           "refId": "B",
@@ -304,7 +309,8 @@
             "drawStyle": "line",
             "lineWidth": 2,
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": false,
+            "insertNulls": 15000
           }
         },
         "overrides": [
@@ -313,7 +319,9 @@
             "properties": [
               { "id": "color", "value": { "mode": "fixed", "fixedColor": "#F5A623" } },
               { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
-              { "id": "custom.lineWidth", "value": 2 }
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.spanNulls", "value": true },
+              { "id": "custom.insertNulls", "value": false }
             ]
           },
           {
@@ -321,7 +329,9 @@
             "properties": [
               { "id": "color", "value": { "mode": "fixed", "fixedColor": "#E02F44" } },
               { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
-              { "id": "custom.lineWidth", "value": 2 }
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.spanNulls", "value": true },
+              { "id": "custom.insertNulls", "value": false }
             ]
           }
         ]
@@ -340,7 +350,7 @@
           "format": "time_series",
           "editorMode": "code",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), avg(temperature) AS temperature\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1\nORDER BY 1"
+          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), avg(temperature) AS temperature\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset) AND quality <> 'bad'\nGROUP BY 1\nORDER BY 1"
         },
         {
           "refId": "B",
@@ -375,7 +385,8 @@
             "drawStyle": "line",
             "lineWidth": 2,
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": false,
+            "insertNulls": 15000
           }
         },
         "overrides": [
@@ -384,7 +395,9 @@
             "properties": [
               { "id": "color", "value": { "mode": "fixed", "fixedColor": "#F5A623" } },
               { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
-              { "id": "custom.lineWidth", "value": 2 }
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.spanNulls", "value": true },
+              { "id": "custom.insertNulls", "value": false }
             ]
           },
           {
@@ -392,7 +405,9 @@
             "properties": [
               { "id": "color", "value": { "mode": "fixed", "fixedColor": "#E02F44" } },
               { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
-              { "id": "custom.lineWidth", "value": 2 }
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.spanNulls", "value": true },
+              { "id": "custom.insertNulls", "value": false }
             ]
           }
         ]
@@ -411,7 +426,7 @@
           "format": "time_series",
           "editorMode": "code",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), avg(pressure) AS pressure\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset)\nGROUP BY 1\nORDER BY 1"
+          "rawSql": "SELECT $__timeGroupAlias(time, $__interval), avg(pressure) AS pressure\nFROM sensor_readings\nWHERE $__timeFilter(time) AND asset_id IN ($asset) AND quality <> 'bad'\nGROUP BY 1\nORDER BY 1"
         },
         {
           "refId": "B",
@@ -496,6 +511,29 @@
           {
             "matcher": { "id": "byName", "options": "Asset" },
             "properties": [{ "id": "custom.minWidth", "value": 190 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Data quality" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "basic" } },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "good": { "text": "good", "color": "transparent", "index": 0 },
+                      "uncertain": { "text": "UNCERTAIN", "color": "#A352CC", "index": 1 },
+                      "bad": { "text": "BAD", "color": "#A352CC", "index": 2 }
+                    }
+                  },
+                  {
+                    "type": "special",
+                    "options": { "match": "null", "result": { "text": "—", "color": "transparent", "index": 3 } }
+                  }
+                ]
+              }
+            ]
           }
         ]
       },
@@ -514,7 +552,7 @@
           "format": "table",
           "editorMode": "code",
           "rawQuery": true,
-          "rawSql": "SELECT asset_id              AS \"Asset\",\n       condition             AS \"Condition\",\n       limit_usage_pct       AS \"Margin used\",\n       worst_signal          AS \"Worst signal\",\n       vibration_avg         AS \"Vibration (mm/s)\",\n       vibration_state       AS \"Vibration state\",\n       temperature_avg       AS \"Temperature (°C)\",\n       temperature_state     AS \"Temperature state\",\n       pressure_avg          AS \"Pressure (bar)\",\n       pressure_state        AS \"Pressure state\",\n       data_availability_pct AS \"Data availability\",\n       last_seen             AS \"Last reading\"\nFROM asset_condition\nWHERE asset_id IN ($asset)\nORDER BY asset_id"
+          "rawSql": "SELECT asset_id              AS \"Asset\",\n       condition             AS \"Condition\",\n       limit_usage_pct       AS \"Margin used\",\n       worst_signal          AS \"Worst signal\",\n       vibration_avg         AS \"Vibration (mm/s)\",\n       vibration_state       AS \"Vibration state\",\n       temperature_avg       AS \"Temperature (°C)\",\n       temperature_state     AS \"Temperature state\",\n       pressure_avg          AS \"Pressure (bar)\",\n       pressure_state        AS \"Pressure state\",\n       data_availability_pct AS \"Data availability\",\n       data_quality          AS \"Data quality\",\n       uncertain_1m          AS \"Uncertain readings\",\n       bad_1m                AS \"Discarded readings\",\n       last_seen             AS \"Last reading\"\nFROM asset_condition\nWHERE asset_id IN ($asset)\nORDER BY asset_id"
         }
       ]
     }
