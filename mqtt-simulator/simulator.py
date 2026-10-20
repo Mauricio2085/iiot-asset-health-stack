@@ -21,6 +21,7 @@ INTERVAL_S = float(os.environ.get("PUBLISH_INTERVAL_S", "5"))
 
 # Same JSON contract per asset; distinct nominal points so Grafana shows
 # different "personalities". Motor arrives via Modbus, not this process.
+# The simulator plays both device and edge, so it also decides quality.
 ASSETS = [
     {
         "asset_id": "critical-pump-01",
@@ -28,6 +29,14 @@ ASSETS = [
         "temperature": 70.0,
         "pressure": 2.5,
         "vibration": 1.0,
+        # Temperature sensor out of calibration: for 2 minutes in every 10 it
+        # reads 3 °C high and the device flags the whole message as uncertain.
+        "calibration_drift": {
+            "period_s": 600,
+            "start_s": 300,
+            "duration_s": 120,
+            "temperature_offset": 3.0,
+        },
     },
     {
         "asset_id": "critical-compressor-01",
@@ -60,17 +69,30 @@ def soft_noise(t: float, base: float, amplitude: float, period_s: float) -> floa
     return base + drift + random.uniform(-amplitude * 0.05, amplitude * 0.05)
 
 
+def in_calibration_drift(elapsed_s: float, asset: dict) -> bool:
+    drift = asset.get("calibration_drift")
+    if drift is None:
+        return False
+    t = elapsed_s % drift["period_s"]
+    return drift["start_s"] <= t < drift["start_s"] + drift["duration_s"]
+
+
 def build_payload(elapsed_s: float, asset: dict) -> dict:
+    temperature = soft_noise(elapsed_s, asset["temperature"], 0.4, 300.0)
+    quality = "good"
+    if in_calibration_drift(elapsed_s, asset):
+        temperature += asset["calibration_drift"]["temperature_offset"]
+        quality = "uncertain"
     return {
         "asset_id": asset["asset_id"],
         "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace(
             "+00:00", "Z"
         ),
         # Mild process drift (~±0.4 °C / ±0.03 bar / ±0.02), not lab-demo swings.
-        "temperature": round(soft_noise(elapsed_s, asset["temperature"], 0.4, 300.0), 2),
+        "temperature": round(temperature, 2),
         "pressure": round(soft_noise(elapsed_s, asset["pressure"], 0.03, 240.0), 3),
         "vibration": round(soft_noise(elapsed_s, asset["vibration"], 0.02, 180.0), 3),
-        "quality": "good",
+        "quality": quality,
     }
 
 
