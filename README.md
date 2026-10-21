@@ -31,6 +31,8 @@ Two data-quality episodes run alongside it:
 - **Instrument failure, not machine failure.** At minute 1 of each motor cycle the vibration transmitter fails for 30 seconds: the reading saturates at 25 mm/s and the device flags it as `bad`. The stack keeps those readings in history but leaves them out of the condition, so the motor stays `normal` instead of raising a false alarm.
 - **Doubtful data.** For 2 minutes in every 10, the pump temperature sensor reads 3 °C high and the simulator flags the readings as `uncertain`. They are used, and the dashboard marks them.
 
+For a five-minute walkthrough, `scripts/demo-prep.sh` lines these episodes up so that warning, uncertain data, and alarm happen while you watch. Timings and what to look at: [docs/demo.en.md](docs/demo.en.md).
+
 ### Asset condition
 
 TimescaleDB holds the engineering limits of each asset in `asset_limits` and exposes the `asset_condition` view: one row per asset with `normal`, `warning`, `alarm`, or `stale`. Each signal is judged on its 1-minute average, the asset takes the worst state of its signals, and an asset with no usable readings in the last minute is `stale`. Readings with `quality = bad` are left out of the averages; `uncertain` ones are used and counted.
@@ -53,7 +55,7 @@ Colors follow ISA-101 for high-performance HMIs: `normal` is gray, and color is 
 
 The dashboard is provisioned from `grafana/dashboards/asset-health.json` and cannot be saved from the Grafana UI. Edit the file instead; Grafana reloads it within about 10 seconds, and the browser shows the change after a page refresh. Rows and tiles repeat over the assets in `asset_limits`, so a new asset shows up without editing the JSON.
 
-Lab notes: [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/asset-condition.en.md](docs/asset-condition.en.md) ([español](docs/asset-condition.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
+Lab notes: [docs/demo.en.md](docs/demo.en.md) ([español](docs/demo.md)), [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/asset-condition.en.md](docs/asset-condition.en.md) ([español](docs/asset-condition.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
 
 ### Pipeline
 
@@ -144,3 +146,15 @@ Modbus values arrive as integers in holding registers and are scaled in Node-RED
 - OPC UA security mode is `None` when that optional path is enabled. That matches the lab simulator and is not a plant connection.
 - Modbus RTU is not implemented (serial / USB horizon only).
 - After `docker compose stop modbus-slave`, the Node-RED Modbus client does not reconnect on its own; run `docker compose restart node-red-ingestion`. See [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md#reconnecting-after-the-slave-stops).
+
+### Lessons learned
+
+Building the MVP with three fixed signals for every asset kept the ETL, the SQL, and the dashboard simple, and every concept (condition, margin used, quality, `stale`) could be built without pivoting data. It also showed where that model stops working:
+
+- **Signals should follow failure modes.** Reliability work starts from an FMEA per asset type, and ISO 17359 maps each failure mode to the parameters that detect it. Starting from three fixed signals gave the motor a "pressure" that is never evaluated.
+- **Narrow measurements fit better than fixed columns.** One row per asset, signal, and time gives each signal its own quality, lets a new signal arrive without a schema change, and joins directly with the narrow `asset_limits` table.
+- **Metadata belongs in an asset registry, not in the message.** Units, sensor ranges, asset type, plant, and area change rarely; templates per asset type keep them in one place.
+- **Standards beat a custom contract.** Sparkplug B already defines typed metrics with quality, plus birth and death messages that report a disconnected device without waiting for a one-minute window. ISA-95 and a Unified Namespace give the topic hierarchy a shared meaning.
+- **Rejected messages need somewhere to go.** A dead-letter table or topic, holding each message with its rejection reason, keeps contract violations visible after they happen.
+
+These are the inputs for the next phase: an ADR on wide versus narrow measurements, an asset registry, and a versioned contract that accepts the current payload during the migration.
