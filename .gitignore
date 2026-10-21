@@ -6,3 +6,4 @@
 mosquitto/config/passwd
 **/.npm/
 **/*.backup
+notes/
