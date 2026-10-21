@@ -4,7 +4,7 @@
         "type": "tab",
         "label": "Telemetry ETL",
         "disabled": false,
-        "info": "Subscribes to +/+/+/telemetry, validates each payload, enriches it with plant and area from the topic and inserts it into the sensor_readings hypertable.",
+        "info": "Subscribes to +/+/+/telemetry, validates each payload, checks the asset against the registry, and inserts the reading into sensor_readings. Plant and area still come from the topic; they must match the assets row.",
         "env": []
     },
     {
@@ -106,7 +106,7 @@
         "type": "function",
         "z": "381ca58481ca40b3",
         "name": "Validate and enrich",
-        "func": "const [plant, area, assetFromTopic] = msg.topic.split('/');\nconst p = msg.payload;\nconst errors = [];\nif (typeof p !== 'object' || p === null) {\n    errors.push('payload is not a JSON object');\n} else {\n    if (p.asset_id !== assetFromTopic) errors.push('asset_id does not match topic');\n    for (const field of ['temperature', 'pressure', 'vibration']) {\n        if (typeof p[field] !== 'number' || !Number.isFinite(p[field])) {\n            errors.push(`${field} is not a number`);\n        }\n    }\n    if (Number.isNaN(Date.parse(p.ts))) errors.push('ts is not a valid timestamp');\n    if (!['good', 'uncertain', 'bad'].includes(p.quality)) {\n        errors.push('quality is not good, uncertain or bad');\n    }\n}\nif (errors.length > 0) {\n    msg.errors = errors;\n    return [null, msg];\n}\nmsg.payload = {\n    time: p.ts,\n    plant,\n    area,\n    asset_id: p.asset_id,\n    temperature: p.temperature,\n    pressure: p.pressure,\n    vibration: p.vibration,\n    quality: p.quality\n};\nreturn [msg, null];",
+        "func": "const [plant, area, assetFromTopic] = msg.topic.split('/');\nconst p = msg.payload;\nconst errors = [];\nif (typeof p !== 'object' || p === null) {\n    errors.push('payload is not a JSON object');\n} else {\n    if (p.asset_id !== assetFromTopic) errors.push('asset_id does not match topic');\n    for (const field of ['temperature', 'pressure', 'vibration']) {\n        if (typeof p[field] !== 'number' || !Number.isFinite(p[field])) {\n            errors.push(`${field} is not a number`);\n        }\n    }\n    if (Number.isNaN(Date.parse(p.ts))) errors.push('ts is not a valid timestamp');\n    if (!['good', 'uncertain', 'bad'].includes(p.quality)) {\n        errors.push('quality is not good, uncertain or bad');\n    }\n}\nif (errors.length > 0) {\n    msg.errors = errors;\n    return [null, msg];\n}\nmsg.reading = {\n    time: p.ts,\n    plant,\n    area,\n    asset_id: p.asset_id,\n    temperature: p.temperature,\n    pressure: p.pressure,\n    vibration: p.vibration,\n    quality: p.quality\n};\nmsg.payload = msg.reading;\nmsg.params = [p.asset_id];\nreturn [msg, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -114,6 +114,47 @@
         "finalize": "",
         "libs": [],
         "x": 390,
+        "y": 280,
+        "wires": [
+            [
+                "a7c31e90b4d25f68"
+            ],
+            [
+                "86dd60c88c332de4"
+            ]
+        ]
+    },
+    {
+        "id": "a7c31e90b4d25f68",
+        "type": "postgresql",
+        "z": "381ca58481ca40b3",
+        "name": "Look up asset",
+        "query": "SELECT plant, area FROM assets WHERE asset_id = $1",
+        "postgreSQLConfig": "0a4795f3533d5ec7",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 640,
+        "y": 280,
+        "wires": [
+            [
+                "c5e82a17d9f0463b"
+            ]
+        ]
+    },
+    {
+        "id": "c5e82a17d9f0463b",
+        "type": "function",
+        "z": "381ca58481ca40b3",
+        "name": "Match registry",
+        "func": "const reading = msg.reading;\nconst rows = Array.isArray(msg.payload) ? msg.payload : [];\nif (!reading) {\n    msg.errors = ['reading missing before registry check'];\n    return [null, msg];\n}\nif (rows.length === 0) {\n    msg.payload = reading;\n    msg.errors = ['asset_id is not in the asset registry'];\n    return [null, msg];\n}\nconst registered = rows[0];\nif (registered.plant !== reading.plant || registered.area !== reading.area) {\n    msg.payload = reading;\n    msg.errors = ['plant or area does not match the asset registry'];\n    return [null, msg];\n}\nmsg.payload = reading;\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 900,
         "y": 280,
         "wires": [
             [
@@ -137,7 +178,7 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 630,
+        "x": 790,
         "y": 380,
         "wires": []
     },
@@ -185,6 +226,7 @@
         "z": "381ca58481ca40b3",
         "name": "Catch db errors",
         "scope": [
+            "a7c31e90b4d25f68",
             "c8e81525ba6d8750"
         ],
         "uncaught": false,
