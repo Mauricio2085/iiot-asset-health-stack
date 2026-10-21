@@ -55,7 +55,7 @@ Colors follow ISA-101 for high-performance HMIs: `normal` is gray, and color is 
 
 The dashboard is provisioned from `grafana/dashboards/asset-health.json` and cannot be saved from the Grafana UI. Edit the file instead; Grafana reloads it within about 10 seconds, and the browser shows the change after a page refresh. Rows and tiles repeat over the assets in `asset_limits`, so a new asset shows up without editing the JSON.
 
-Lab notes: [docs/demo.en.md](docs/demo.en.md) ([español](docs/demo.md)), [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/asset-condition.en.md](docs/asset-condition.en.md) ([español](docs/asset-condition.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
+Lab notes: [docs/demo.en.md](docs/demo.en.md) ([español](docs/demo.md)), [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/asset-condition.en.md](docs/asset-condition.en.md) ([español](docs/asset-condition.md)), [docs/asset-registry.en.md](docs/asset-registry.en.md) ([español](docs/asset-registry.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
 
 ### Pipeline
 
@@ -130,7 +130,7 @@ Every OT path publishes QoS 1 JSON to `plant-01/area-01/<asset_id>/telemetry`:
 
 `quality` uses the OPC UA levels `good`, `uncertain`, and `bad`. The source decides it, the edge translates device codes into this vocabulary, and IT validates it. See [docs/asset-condition.en.md](docs/asset-condition.en.md#data-quality).
 
-The ETL flow accepts the message only when `asset_id` matches the topic, the three signals are finite numbers, `ts` is a timestamp, and `quality` is one of the three levels. Valid rows go into `sensor_readings`, whose quality column has the same rule.
+The ETL flow accepts the message only when `asset_id` matches the topic, the three signals are finite numbers, `ts` is a timestamp, `quality` is one of the three levels, and the asset is in the registry with the same plant and area as the topic. Valid rows go into `sensor_readings`, whose quality column has the same rule. Plant, area, type, and criticality live in `assets`: [docs/asset-registry.en.md](docs/asset-registry.en.md).
 
 Modbus values arrive as integers in holding registers and are scaled in Node-RED (`HR0 / 10`, `HR1 / 100`, `HR2 / 100`); HR3 carries the device status that becomes `quality`. See [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md).
 
@@ -153,8 +153,8 @@ Building the MVP with three fixed signals for every asset kept the ETL, the SQL,
 
 - **Signals should follow failure modes.** Reliability work starts from an FMEA per asset type, and ISO 17359 maps each failure mode to the parameters that detect it. Starting from three fixed signals gave the motor a "pressure" that is never evaluated.
 - **Narrow measurements fit better than fixed columns.** One row per asset, signal, and time gives each signal its own quality, lets a new signal arrive without a schema change, and joins directly with the narrow `asset_limits` table.
-- **Metadata belongs in an asset registry, not in the message.** Units, sensor ranges, asset type, plant, and area change rarely; templates per asset type keep them in one place.
+- **Metadata belongs in an asset registry, not in the message.** Plant, area, type, and criticality now live in `assets`. Units and limits stay on `asset_limits`. A template of limits per asset type is still ahead.
 - **Standards beat a custom contract.** Sparkplug B already defines typed metrics with quality, plus birth and death messages that report a disconnected device without waiting for a one-minute window. ISA-95 and a Unified Namespace give the topic hierarchy a shared meaning.
 - **Rejected messages need somewhere to go.** A dead-letter table or topic, holding each message with its rejection reason, keeps contract violations visible after they happen.
 
-These are the inputs for the next phase: an ADR on wide versus narrow measurements, an asset registry, and a versioned contract that accepts the current payload during the migration.
+Still ahead in this phase: continuous aggregates, a place for rejected messages, an ADR on wide versus narrow measurements, and a versioned contract that accepts the current payload during that migration.
