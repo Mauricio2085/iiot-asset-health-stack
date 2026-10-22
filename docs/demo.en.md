@@ -35,7 +35,7 @@ The motor trend shows a sudden drop at L − 8:00. That is the scenario restart 
 
 | Moment | Where | What it shows |
 | --- | --- | --- |
-| L | Top band | Everything gray. The motor tile shows about 50 % of its margin used: vibration is rising toward the alarm |
+| L | Pipeline band and motor tile | The pipeline is gray: about 36 readings a minute, zero rejections, lag under 15 s. The motor tile shows about 50 % of its margin used: vibration is rising toward the alarm |
 | L + 0:20 | Motor tile, warning counter | `WARNING` in amber. Only vibration rises; temperature and pressure stay steady, which points to a mechanical cause consistent with unbalance |
 | L + 0:30 | Detail table, pump row | Data quality `UNCERTAIN`: the temperature sensor reads 3 °C high. The readings are used and flagged; the condition stays `normal` |
 | L + 1:00 | Motor row, vibration trend | A gap about 8 minutes back. The transmitter read 25 mm/s and flagged it as `bad`: the readings are stored but left out of the condition, so there was no false alarm |

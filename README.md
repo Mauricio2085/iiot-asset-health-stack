@@ -53,9 +53,10 @@ Chunks older than one day are compressed. Raw chunks older than seven days are d
 
 **Asset Health** in Grafana reads top to bottom, one question per band:
 
-1. **What needs attention?** Counters of assets in alarm, in warning, and without data, then one tile per asset with its condition, the margin used, and the signal behind it ("87 % of margin used · vibration"). When readings are doubtful or discarded, the tile adds a note such as "6 bad readings discarded".
-2. **Why, and where is it heading?** One row per asset with vibration, temperature, and pressure trends. Warning (amber) and alarm (red) limits are dashed lines read from `asset_limits`, so changing a limit in the database moves the line. Trends leave out `bad` readings and break the line when readings are missing for more than 15 seconds.
-3. **Detail.** A table of `asset_condition`: 1-minute averages, the state of each signal, data availability, data quality with the uncertain and discarded readings, and the time of the last reading.
+1. **Is the edge alive?** Readings stored in the last minute, rejections in the last 15 minutes, and the age of the newest reading. With the three assets publishing every 5 seconds a healthy minute holds 33 to 36 readings. The rate turns amber below 30, a rejection count turns amber at 1, and the lag turns amber at 15 seconds.
+2. **What needs attention?** Counters of assets in alarm, in warning, and without data, then one tile per asset with its condition, the margin used, and the signal behind it ("87 % of margin used · vibration"). When readings are doubtful or discarded, the tile adds a note such as "6 bad readings discarded".
+3. **Why, and where is it heading?** One row per asset with vibration, temperature, and pressure trends. Warning (amber) and alarm (red) limits are dashed lines read from `asset_limits`, so changing a limit in the database moves the line. Trends leave out `bad` readings and break the line when readings are missing for more than 15 seconds.
+4. **Detail.** A table of `asset_condition`: 1-minute averages, the state of each signal, data availability, data quality with the uncertain and discarded readings, and the time of the last reading.
 
 Colors follow ISA-101 for high-performance HMIs: `normal` is gray, and color is kept for abnormal states (amber warning, red alarm, purple no data or doubtful data). With every asset healthy the screen has no color at all.
 
@@ -164,4 +165,4 @@ Building the MVP with three fixed signals for every asset kept the ETL, the SQL,
 - **Standards beat a custom contract.** Sparkplug B already defines typed metrics with quality, plus birth and death messages that report a disconnected device without waiting for a one-minute window. ISA-95 and a Unified Namespace give the topic hierarchy a shared meaning.
 - **Rejected messages need somewhere to go.** Contract violations now go to the MQTT topic `rejected` and to `rejected_messages`, one row per message with the reasons. A database outage still only shows up in the editor.
 
-Still ahead in this phase: the pipeline health panel, an ADR on wide versus narrow measurements, and a versioned contract that accepts the current payload during that migration.
+Still ahead in this phase: an ADR on wide versus narrow measurements, and a versioned contract that accepts the current payload during that migration.

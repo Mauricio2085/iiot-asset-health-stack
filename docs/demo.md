@@ -35,7 +35,7 @@ La tendencia del motor muestra una caída brusca en L − 8:00. Es el reinicio d
 
 | Momento | Dónde | Qué muestra |
 | --- | --- | --- |
-| L | Franja superior | Todo gris. La tarjeta del motor marca cerca de 50 % de margen consumido: la vibración sube hacia la alarma |
+| L | Franja del pipeline y tarjeta del motor | El pipeline está gris: unas 36 lecturas por minuto, cero rechazos, lag bajo 15 s. La tarjeta del motor marca cerca de 50 % de margen consumido: la vibración sube hacia la alarma |
 | L + 0:20 | Tarjeta del motor y contador de warning | `WARNING` en ámbar. Solo sube la vibración; la temperatura y la presión siguen estables, lo que apunta a una causa mecánica compatible con un desbalance |
 | L + 0:30 | Tabla de detalle, fila de la bomba | Data quality `UNCERTAIN`: el sensor de temperatura marca 3 °C de más. Las lecturas se usan y quedan señaladas; la condición sigue en `normal` |
 | L + 1:00 | Fila del motor, tendencia de vibración | Un hueco de hace unos 8 minutos. El transmisor marcó 25 mm/s y lo señaló como `bad`: las lecturas se guardan, pero no entran a la condición, así que no hubo falsa alarma |
