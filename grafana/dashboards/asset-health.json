@@ -26,10 +26,136 @@
   },
   "panels": [
     {
+      "id": 9,
+      "type": "row",
+      "title": "Pipeline",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "panels": []
+    },
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Readings / min",
+      "description": "Readings stored in the last minute. Amber below 30, which means at least one asset has gone quiet. A healthy minute is 33 to 36.",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 1 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "timescaledb" },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#F5A623", "value": null },
+              { "color": "#3A3F45", "value": 30 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "timescaledb" },
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS readings\nFROM sensor_readings\nWHERE time > now() - interval '1 minute'"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Rejections / 15 min",
+      "description": "Messages the ETL refused in the last 15 minutes. Amber at 1 or more.",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 1 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "timescaledb" },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#3A3F45", "value": null },
+              { "color": "#F5A623", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "timescaledb" },
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS rejections\nFROM rejected_messages\nWHERE rejected_at > now() - interval '15 minutes'"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Ingestion lag",
+      "description": "Age of the newest reading. Amber at 15 seconds or more.",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "timescaledb" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#3A3F45", "value": null },
+              { "color": "#F5A623", "value": 15 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "timescaledb" },
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT round(extract(epoch FROM (now() - max(time))))::int AS lag_s\nFROM sensor_readings\nWHERE time > now() - interval '1 day'"
+        }
+      ]
+    },
+    {
       "id": 10,
       "type": "stat",
       "title": "Assets in alarm",
-      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 5 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "timescaledb"
@@ -72,7 +198,7 @@
       "id": 11,
       "type": "stat",
       "title": "Assets in warning",
-      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 5 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "timescaledb"
@@ -115,7 +241,7 @@
       "id": 12,
       "type": "stat",
       "title": "Assets without data",
-      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 5 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "timescaledb"
@@ -161,7 +287,7 @@
       "repeat": "asset",
       "repeatDirection": "h",
       "maxPerRow": 3,
-      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 4 },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 9 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "timescaledb"
@@ -210,14 +336,14 @@
       "title": "$asset",
       "repeat": "asset",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
       "panels": []
     },
     {
       "id": 21,
       "type": "timeseries",
       "title": "Vibration",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 15 },
       "interval": "5s",
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -293,7 +419,7 @@
       "id": 22,
       "type": "timeseries",
       "title": "Temperature",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 10 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 15 },
       "interval": "5s",
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -369,7 +495,7 @@
       "id": 23,
       "type": "timeseries",
       "title": "Pressure",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 10 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 15 },
       "interval": "5s",
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -446,14 +572,14 @@
       "type": "row",
       "title": "Detail",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
       "panels": []
     },
     {
       "id": 4,
       "type": "table",
       "title": "Asset condition (1-minute averages)",
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 19 },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "timescaledb"
