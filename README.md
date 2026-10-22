@@ -61,7 +61,7 @@ Colors follow ISA-101 for high-performance HMIs: `normal` is gray, and color is 
 
 The dashboard is provisioned from `grafana/dashboards/asset-health.json` and cannot be saved from the Grafana UI. Edit the file instead; Grafana reloads it within about 10 seconds, and the browser shows the change after a page refresh. Rows and tiles repeat over the assets in `asset_limits`, so a new asset shows up without editing the JSON.
 
-Lab notes: [docs/demo.en.md](docs/demo.en.md) ([español](docs/demo.md)), [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/asset-condition.en.md](docs/asset-condition.en.md) ([español](docs/asset-condition.md)), [docs/asset-registry.en.md](docs/asset-registry.en.md) ([español](docs/asset-registry.md)), [docs/readings-history.en.md](docs/readings-history.en.md) ([español](docs/readings-history.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
+Lab notes: [docs/demo.en.md](docs/demo.en.md) ([español](docs/demo.md)), [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md) ([español](docs/modbus-tcp.md)), [docs/asset-condition.en.md](docs/asset-condition.en.md) ([español](docs/asset-condition.md)), [docs/asset-registry.en.md](docs/asset-registry.en.md) ([español](docs/asset-registry.md)), [docs/readings-history.en.md](docs/readings-history.en.md) ([español](docs/readings-history.md)), [docs/rejected-messages.en.md](docs/rejected-messages.en.md) ([español](docs/rejected-messages.md)), [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md) ([español](docs/opcua-prosys.md)).
 
 ### Pipeline
 
@@ -136,7 +136,7 @@ Every OT path publishes QoS 1 JSON to `plant-01/area-01/<asset_id>/telemetry`:
 
 `quality` uses the OPC UA levels `good`, `uncertain`, and `bad`. The source decides it, the edge translates device codes into this vocabulary, and IT validates it. See [docs/asset-condition.en.md](docs/asset-condition.en.md#data-quality).
 
-The ETL flow accepts the message only when `asset_id` matches the topic, the three signals are finite numbers, `ts` is a timestamp, `quality` is one of the three levels, and the asset is in the registry with the same plant and area as the topic. Valid rows go into `sensor_readings`, whose quality column has the same rule. Plant, area, type, and criticality live in `assets`: [docs/asset-registry.en.md](docs/asset-registry.en.md).
+The ETL flow accepts the message only when `asset_id` matches the topic, the three signals are finite numbers, `ts` is a timestamp, `quality` is one of the three levels, and the asset is in the registry with the same plant and area as the topic. Valid rows go into `sensor_readings`, whose quality column has the same rule. Plant, area, type, and criticality live in `assets`: [docs/asset-registry.en.md](docs/asset-registry.en.md). A refused message is published to the MQTT topic `rejected` and stored in `rejected_messages`: [docs/rejected-messages.en.md](docs/rejected-messages.en.md).
 
 Modbus values arrive as integers in holding registers and are scaled in Node-RED (`HR0 / 10`, `HR1 / 100`, `HR2 / 100`); HR3 carries the device status that becomes `quality`. See [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md).
 
@@ -144,7 +144,7 @@ Modbus values arrive as integers in holding registers and are scaled in Node-RED
 
 - Three lab assets in one plant and area, all with the same three signals.
 - Quality is one value per message: a failing sensor marks the other two signals of that reading too. Per-signal quality needs a narrow, one-row-per-signal model.
-- Messages the ETL rejects only show in the debug sidebar of the ETL editor; they are not stored anywhere.
+- A database outage is still only visible in the ETL editor's debug sidebar. Contract rejections are stored.
 - Nothing sends notifications: a warning or alarm is only visible on the dashboard.
 - Grafana 12.0.4 picks the Y-axis tick step on its own; there is no fixed step per panel.
 - Dashboard trends read `sensor_readings`. A range older than seven days loses the line; the minute aggregate still has the summary.
@@ -162,6 +162,6 @@ Building the MVP with three fixed signals for every asset kept the ETL, the SQL,
 - **Narrow measurements fit better than fixed columns.** One row per asset, signal, and time gives each signal its own quality, lets a new signal arrive without a schema change, and joins directly with the narrow `asset_limits` table.
 - **Metadata belongs in an asset registry, not in the message.** Plant, area, type, and criticality now live in `assets`. Units and limits stay on `asset_limits`. A template of limits per asset type is still ahead.
 - **Standards beat a custom contract.** Sparkplug B already defines typed metrics with quality, plus birth and death messages that report a disconnected device without waiting for a one-minute window. ISA-95 and a Unified Namespace give the topic hierarchy a shared meaning.
-- **Rejected messages need somewhere to go.** A dead-letter table or topic, holding each message with its rejection reason, keeps contract violations visible after they happen.
+- **Rejected messages need somewhere to go.** Contract violations now go to the MQTT topic `rejected` and to `rejected_messages`, one row per message with the reasons. A database outage still only shows up in the editor.
 
-Still ahead in this phase: a place for rejected messages, an ADR on wide versus narrow measurements, and a versioned contract that accepts the current payload during that migration.
+Still ahead in this phase: the pipeline health panel, an ADR on wide versus narrow measurements, and a versioned contract that accepts the current payload during that migration.
