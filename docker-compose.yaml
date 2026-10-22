@@ -148,6 +148,7 @@ services:
       - ./timescaledb/init/002_asset_condition.sql:/docker-entrypoint-initdb.d/020_asset_condition.sql:ro
       - ./timescaledb/init/003_reading_quality.sql:/docker-entrypoint-initdb.d/030_reading_quality.sql:ro
       - ./timescaledb/init/004_assets.sql:/docker-entrypoint-initdb.d/040_assets.sql:ro
+      - ./timescaledb/init/005_readings_history.sql:/docker-entrypoint-initdb.d/050_readings_history.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
