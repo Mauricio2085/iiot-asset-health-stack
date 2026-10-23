@@ -164,7 +164,7 @@ services:
     container_name: edge-timescaledb
     restart: on-failure
     ports:
-      - "5435:5432"
+      - "127.0.0.1:5435:5432"
     environment:
       - TZ=America/Bogota
       - POSTGRES_USER=${POSTGRES_USER}
