@@ -20,6 +20,13 @@
  *
  **/
 
+const bcrypt = require("/usr/src/node-red/node_modules/bcryptjs");
+const adminUser = process.env.NODE_RED_ADMIN_USER;
+const adminPassword = process.env.NODE_RED_ADMIN_PASSWORD;
+if (!adminUser || !adminPassword) {
+  throw new Error("NODE_RED_ADMIN_USER and NODE_RED_ADMIN_PASSWORD are required");
+}
+
 module.exports = {
   /*******************************************************************************
    * Flow File and User Directory Settings
@@ -72,14 +79,14 @@ module.exports = {
   /** To password protect the Node-RED editor and admin API, the following
    * property can be used. See https://nodered.org/docs/security.html for details.
    */
-  //adminAuth: {
-  //    type: "credentials",
-  //    users: [{
-  //        username: "admin",
-  //        password: "$2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN.",
-  //        permissions: "*"
-  //    }]
-  //},
+  adminAuth: {
+    type: "credentials",
+    users: [{
+      username: adminUser,
+      password: bcrypt.hashSync(adminPassword, 8),
+      permissions: "*"
+    }]
+  },
 
   /** The following property can be used to enable HTTPS
    * This property can be either an object, containing both a (private) key

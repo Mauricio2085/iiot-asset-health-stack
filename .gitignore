@@ -1,6 +1,7 @@
 .cursor/
 .env
 **/flows_cred.json
+**/.sessions.json
 **/.config.*.json
 **/node_modules/
 mosquitto/config/passwd
