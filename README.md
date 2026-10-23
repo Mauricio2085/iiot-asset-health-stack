@@ -81,6 +81,8 @@ Prosys OPC UA ─► Node-RED (OPC UA, off) ─────┘      ▼
                                                  Grafana
 ```
 
+`ot-net` holds the simulator, the Modbus slave, and the ingestion editor. `it-net` holds the ETL, TimescaleDB, and Grafana. Mosquitto is attached to both, so a reading crosses only as an MQTT message. A name on the other network does not resolve. Each Node-RED also prohibits the other Docker subnets, so a guessed IP is refused. Host ports stay published; closing the database port is the next stage.
+
 ### Services
 
 | Service | Image / build | Host port |
