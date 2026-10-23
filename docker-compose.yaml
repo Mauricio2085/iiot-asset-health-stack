@@ -17,10 +17,15 @@ services:
     restart: on-failure
     ports:
       - "1883:1883" # Standard MQTT port
+    entrypoint: ["/bin/sh", "/usr/local/bin/mosquitto-auth-entrypoint.sh"]
     volumes:
       - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/docker-entrypoint.sh:/usr/local/bin/mosquitto-auth-entrypoint.sh:ro
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
+    environment:
+      - MQTT_USER=${MQTT_USER}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
     networks:
       - gateway-net
     deploy:
@@ -39,6 +44,8 @@ services:
       - TZ=America/Bogota
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883
+      - MQTT_USER=${MQTT_USER}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
       - PUBLISH_INTERVAL_S=5
     depends_on:
       - mosquitto
@@ -87,8 +94,12 @@ services:
       - MODBUS_HOST=${MODBUS_HOST}
       - MODBUS_PORT=${MODBUS_PORT}
       - MODBUS_UNIT_ID=${MODBUS_UNIT_ID}
+      - MQTT_USER=${MQTT_USER}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
+    entrypoint: ["/bin/bash", "-c", "node /mqtt-credentials.js && exec ./entrypoint.sh"]
     volumes:
       - ./nodered/ingestion/data:/data
+      - ./nodered/mqtt-credentials.js:/mqtt-credentials.js:ro
     depends_on:
       - mosquitto
       - modbus-slave
@@ -114,8 +125,12 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
+      - MQTT_USER=${MQTT_USER}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
+    entrypoint: ["/bin/bash", "-c", "node /mqtt-credentials.js && exec ./entrypoint.sh"]
     volumes:
       - ./nodered/etl/data:/data
+      - ./nodered/mqtt-credentials.js:/mqtt-credentials.js:ro
     depends_on:
       mosquitto:
         condition: service_started

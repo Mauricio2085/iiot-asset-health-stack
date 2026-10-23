@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 
+
+
 BROKER_HOST = os.environ.get("MQTT_HOST", "mosquitto")
 BROKER_PORT = int(os.environ.get("MQTT_PORT", "1883"))
 INTERVAL_S = float(os.environ.get("PUBLISH_INTERVAL_S", "5"))
@@ -108,6 +110,10 @@ def main() -> int:
 
     while _running:
         try:
+            client.username_pw_set(
+                os.environ["MQTT_USER"],
+                os.environ["MQTT_PASSWORD"],
+            )
             client.connect(BROKER_HOST, BROKER_PORT, keepalive=60)
             break
         except OSError as exc:
