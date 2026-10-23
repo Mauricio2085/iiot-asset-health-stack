@@ -1,5 +1,7 @@
 networks:
-  gateway-net:
+  ot-net:
+    driver: bridge
+  it-net:
     driver: bridge
 
 volumes:
@@ -27,7 +29,8 @@ services:
       - MQTT_USER=${MQTT_USER}
       - MQTT_PASSWORD=${MQTT_PASSWORD}
     networks:
-      - gateway-net
+      - ot-net
+      - it-net
     deploy:
       resources:
         limits:
@@ -50,7 +53,7 @@ services:
     depends_on:
       - mosquitto
     networks:
-      - gateway-net
+      - ot-net
     deploy:
       resources:
         limits:
@@ -72,7 +75,7 @@ services:
       - MODBUS_UNIT_ID=1
       - UPDATE_INTERVAL_S=1
     networks:
-      - gateway-net
+      - ot-net
     deploy:
       resources:
         limits:
@@ -98,7 +101,10 @@ services:
       - MODBUS_UNIT_ID=${MODBUS_UNIT_ID}
       - MQTT_USER=${MQTT_USER}
       - MQTT_PASSWORD=${MQTT_PASSWORD}
-    entrypoint: ["/bin/bash", "-c", "node /mqtt-credentials.js && exec ./entrypoint.sh"]
+    user: "0:0"
+    entrypoint: ["/bin/bash", "-c", "ip route add prohibit 172.16.0.0/12 && exec su -s /bin/bash node-red -c 'node /mqtt-credentials.js && exec ./entrypoint.sh'"]
+    cap_add:
+      - NET_ADMIN
     volumes:
       - ./nodered/ingestion/data:/data
       - ./nodered/mqtt-credentials.js:/mqtt-credentials.js:ro
@@ -106,7 +112,7 @@ services:
       - mosquitto
       - modbus-slave
     networks:
-      - gateway-net
+      - ot-net
     deploy:
       resources:
         limits:
@@ -131,7 +137,10 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - MQTT_USER=${MQTT_USER}
       - MQTT_PASSWORD=${MQTT_PASSWORD}
-    entrypoint: ["/bin/bash", "-c", "node /mqtt-credentials.js && exec ./entrypoint.sh"]
+    user: "0:0"
+    entrypoint: ["/bin/bash", "-c", "ip route add prohibit 172.16.0.0/12 && exec su -s /bin/bash node-red -c 'node /mqtt-credentials.js && exec ./entrypoint.sh'"]
+    cap_add:
+      - NET_ADMIN
     volumes:
       - ./nodered/etl/data:/data
       - ./nodered/mqtt-credentials.js:/mqtt-credentials.js:ro
@@ -141,7 +150,7 @@ services:
       timescaledb:
         condition: service_healthy
     networks:
-      - gateway-net
+      - it-net
     deploy:
       resources:
         limits:
@@ -175,7 +184,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - gateway-net
+      - it-net
     deploy:
       resources:
         limits:
@@ -207,7 +216,7 @@ services:
       timescaledb:
         condition: service_healthy
     networks:
-      - gateway-net
+      - it-net
     deploy:
       resources:
         limits:
