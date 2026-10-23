@@ -106,7 +106,7 @@ El demo tiene un episodio por cada nivel anormal:
 | `critical-motor-01` | Minuto 1:00–1:30 de su ciclo de 13 minutos | `bad`       | El transmisor de vibración se satura en 25 mm/s. Las lecturas quedan fuera, así que no hay falsa alarma                        |
 | `critical-pump-01`  | 2 minutos de cada 10, desde el minuto 5    | `uncertain` | El sensor de temperatura marca 3 °C de más. Las lecturas se usan, así que el margen consumido sube un poco, y quedan señaladas |
 
-La calidad es un solo valor por mensaje, así que cubre las tres señales a la vez: cuando un sensor falla, la fuente informa la peor calidad y las otras dos señales también la llevan. La calidad por señal encaja en un modelo estrecho con una fila por señal, previsto para la fase de datos.
+La calidad es un solo valor por mensaje, así que cubre las tres señales a la vez: cuando un sensor falla, la fuente informa la peor calidad y las otras dos señales también la llevan. La calidad por señal queda escrita como destino en [adr-measurements.md](adr-measurements.md): una fila por señal, y esta tabla ancha sigue vigente.
 
 ## Consultar
 

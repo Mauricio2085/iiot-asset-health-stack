@@ -144,7 +144,7 @@ Modbus values arrive as integers in holding registers and are scaled in Node-RED
 ### Current limits
 
 - Three lab assets in one plant and area, all with the same three signals.
-- Quality is one value per message: a failing sensor marks the other two signals of that reading too. Per-signal quality needs a narrow, one-row-per-signal model.
+- Quality is one value per message: a failing sensor marks the other two signals of that reading too. The accepted target is one row per signal with its own quality; `sensor_readings` stays wide until that migration. See [docs/adr-measurements.en.md](docs/adr-measurements.en.md).
 - A database outage is still only visible in the ETL editor's debug sidebar. Contract rejections are stored.
 - Nothing sends notifications: a warning or alarm is only visible on the dashboard.
 - Grafana 12.0.4 picks the Y-axis tick step on its own; there is no fixed step per panel.
@@ -160,9 +160,9 @@ Modbus values arrive as integers in holding registers and are scaled in Node-RED
 Building the MVP with three fixed signals for every asset kept the ETL, the SQL, and the dashboard simple, and every concept (condition, margin used, quality, `stale`) could be built without pivoting data. It also showed where that model stops working:
 
 - **Signals should follow failure modes.** Reliability work starts from an FMEA per asset type, and ISO 17359 maps each failure mode to the parameters that detect it. Starting from three fixed signals gave the motor a "pressure" that is never evaluated.
-- **Narrow measurements fit better than fixed columns.** One row per asset, signal, and time gives each signal its own quality, lets a new signal arrive without a schema change, and joins directly with the narrow `asset_limits` table.
+- **Narrow measurements fit better than fixed columns.** One row per asset, signal, and time gives each signal its own quality, lets a new signal arrive without adding a column, and joins directly with the narrow `asset_limits` table. That target is accepted in [docs/adr-measurements.en.md](docs/adr-measurements.en.md). `sensor_readings` stays wide while contract v1 is in force.
 - **Metadata belongs in an asset registry, not in the message.** Plant, area, type, and criticality now live in `assets`. Units and limits stay on `asset_limits`. A template of limits per asset type is still ahead.
 - **Standards beat a custom contract.** Sparkplug B already defines typed metrics with quality, plus birth and death messages that report a disconnected device without waiting for a one-minute window. ISA-95 and a Unified Namespace give the topic hierarchy a shared meaning.
 - **Rejected messages need somewhere to go.** Contract violations now go to the MQTT topic `rejected` and to `rejected_messages`, one row per message with the reasons. A database outage still only shows up in the editor.
 
-Still ahead in this phase: an ADR on wide versus narrow measurements, and a versioned contract that accepts the current payload during that migration.
+Phase 2 closes with [docs/adr-measurements.en.md](docs/adr-measurements.en.md). Still ahead: the migration to one row per signal, and contract v2 with a quality per signal.

@@ -106,7 +106,7 @@ The demo has one episode per abnormal level:
 | `critical-motor-01` | Minute 1:00–1:30 of its 13-minute cycle | `bad` | The vibration transmitter saturates at 25 mm/s. The readings are left out, so there is no false alarm |
 | `critical-pump-01` | 2 minutes in every 10, from minute 5 | `uncertain` | The temperature sensor reads 3 °C high. The readings are used, so the margin used rises a little, and they are flagged |
 
-Quality is one value per message, so it covers the three signals at once: when one sensor fails, the source reports the worst quality and the other two signals carry it too. Per-signal quality fits a narrow model with one row per signal, which is planned for the data phase.
+Quality is one value per message, so it covers the three signals at once: when one sensor fails, the source reports the worst quality and the other two signals carry it too. Per-signal quality is the accepted target in [adr-measurements.en.md](adr-measurements.en.md): one row per signal, with this wide table still in force.
 
 ## Query
 
