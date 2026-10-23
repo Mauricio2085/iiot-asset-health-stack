@@ -93,7 +93,7 @@ Prosys OPC UA ─► Node-RED (OPC UA, off) ─────┘      ▼
 | TimescaleDB | `timescale/timescaledb:2.30.2-pg17` | 5435 |
 | Grafana | `grafana/grafana-oss:12.0.4` | 3001 |
 
-Grafana login comes from `GF_SECURITY_ADMIN_USER` and `GF_SECURITY_ADMIN_PASSWORD`. The dashboard is in the **IIoT** folder.
+Grafana login comes from `GF_SECURITY_ADMIN_USER` and `GF_SECURITY_ADMIN_PASSWORD`. The dashboard is in the **IIoT** folder. The Node-RED editors at `http://localhost:1881` and `http://localhost:1882` ask for `NODE_RED_ADMIN_USER` and `NODE_RED_ADMIN_PASSWORD`. Node-RED hashes that password in memory when the editor starts.
 
 ### Quick start
 
