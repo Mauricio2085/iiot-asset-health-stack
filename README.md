@@ -81,7 +81,7 @@ Prosys OPC UA ─► Node-RED (OPC UA, off) ─────┘      ▼
                                                  Grafana
 ```
 
-`ot-net` holds the simulator, the Modbus slave, and the ingestion editor. `it-net` holds the ETL, TimescaleDB, and Grafana. Mosquitto is attached to both, so a reading crosses only as an MQTT message. A name on the other network does not resolve. Each Node-RED also prohibits the other Docker subnets, so a guessed IP is refused. Host ports stay published; closing the database port is the next stage.
+`ot-net` holds the simulator, the Modbus slave, and the ingestion editor. `it-net` holds the ETL, TimescaleDB, and Grafana. Mosquitto is attached to both, so a reading crosses only as an MQTT message. A name on the other network does not resolve. Each Node-RED also prohibits the other Docker subnets, so a guessed IP is refused. TimescaleDB is published only on `127.0.0.1:5435`, so another machine on the LAN cannot open it. Grafana and the ETL use the name `timescaledb` on `it-net`.
 
 ### Services
 
@@ -92,7 +92,7 @@ Prosys OPC UA ─► Node-RED (OPC UA, off) ─────┘      ▼
 | modbus-slave | `./modbus-slave` | 1502 |
 | Node-RED ingestion | `nodered/node-red:4.0.9` | 1881 |
 | Node-RED ETL | `nodered/node-red:4.0.9` | 1882 |
-| TimescaleDB | `timescale/timescaledb:2.30.2-pg17` | 5435 |
+| TimescaleDB | `timescale/timescaledb:2.30.2-pg17` | 127.0.0.1:5435 |
 | Grafana | `grafana/grafana-oss:12.0.4` | 3001 |
 
 Grafana login comes from `GF_SECURITY_ADMIN_USER` and `GF_SECURITY_ADMIN_PASSWORD`. The dashboard is in the **IIoT** folder. The Node-RED editors at `http://localhost:1881` and `http://localhost:1882` ask for `NODE_RED_ADMIN_USER` and `NODE_RED_ADMIN_PASSWORD`. Node-RED hashes that password in memory when the editor starts.
