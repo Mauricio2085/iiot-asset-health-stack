@@ -46,7 +46,7 @@ docker compose exec -T timescaledb sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES
 Para verlos llegar:
 
 ```bash
-docker compose exec mosquitto mosquitto_sub -h localhost -t rejected -v
+docker compose exec mosquitto sh -c 'mosquitto_sub -h localhost -u "$MQTT_USER" -P "$MQTT_PASSWORD" -t rejected -v'
 ```
 
 ## Aplicar el script en una base existente
@@ -61,6 +61,6 @@ docker compose exec -T timescaledb sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES
 ## Comprobación
 
 1. Un mensaje con `quality` fuera de la lista no aparece en `sensor_readings`.
-2. Ese mensaje aparece una vez en `rejected_messages`, con todas sus razones en `errors`, y también llega a `mosquitto_sub -t rejected`.
+2. Ese mensaje aparece una vez en `rejected_messages`, con todas sus razones en `errors`, y también llega a `mosquitto_sub -t rejected` con `MQTT_USER`.
 3. Un `asset_id` que no está en `assets` hace lo mismo.
 4. Una lectura válida de los tres activos no agrega fila en `rejected_messages`.

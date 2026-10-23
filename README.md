@@ -122,7 +122,7 @@ Full setup: [docs/opcua-prosys.en.md](docs/opcua-prosys.en.md).
 
 ### What the payload looks like
 
-Every OT path publishes QoS 1 JSON to `plant-01/area-01/<asset_id>/telemetry`:
+Every OT path publishes QoS 1 JSON to `plant-01/area-01/<asset_id>/telemetry`. Clients connect with `MQTT_USER` and `MQTT_PASSWORD` from `.env`. Mosquitto refuses an anonymous connection. At start the broker writes the password file into its data volume, and each Node-RED writes `${MQTT_USER}` and `${MQTT_PASSWORD}` into its credential file. Neither file is committed.
 
 ```json
 {
@@ -150,7 +150,6 @@ Modbus values arrive as integers in holding registers and are scaled in Node-RED
 - Grafana 12.0.4 picks the Y-axis tick step on its own; there is no fixed step per panel.
 - Dashboard trends read `sensor_readings`. A range older than seven days loses the line; the minute aggregate still has the summary.
 - Database changes after the first start are applied by hand with `psql`; there is no migration tool.
-- Mosquitto still allows anonymous clients. `MQTT_USER` and `MQTT_PASSWORD` are reserved and unused.
 - OPC UA security mode is `None` when that optional path is enabled. That matches the lab simulator and is not a plant connection.
 - Modbus RTU is not implemented (serial / USB horizon only).
 - After `docker compose stop modbus-slave`, the Node-RED Modbus client does not reconnect on its own; run `docker compose restart node-red-ingestion`. See [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md#reconnecting-after-the-slave-stops).
