@@ -1,3 +1,5 @@
+[Español](README.es.md)
+
 A maintenance lead cannot tell an unbalancing motor, a failed vibration transmitter, and a silent edge apart from three trend lines. This lab separates them: the motor's vibration crosses warning at 2.8 mm/s and alarm at 4.5 mm/s, a 25 mm/s `bad` reading stays out of the condition, and the pump's temperature, 3 °C high and `uncertain`, leaves the asset `normal`. The one-page case is [docs/case.en.md](docs/case.en.md) ([español](docs/case.md)).
 
 ## Overview
