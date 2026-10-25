@@ -143,6 +143,8 @@ Every OT path publishes QoS 1 JSON to `plant-01/area-01/<asset_id>/telemetry`. C
 
 The ETL flow accepts the message only when `asset_id` matches the topic, the three signals are finite numbers, `ts` is a timestamp, `quality` is one of the three levels, and the asset is in the registry with the same plant and area as the topic. Valid rows go into `sensor_readings`, whose quality column has the same rule. Plant, area, type, and criticality live in `assets`: [docs/asset-registry.en.md](docs/asset-registry.en.md). A refused message is published to the MQTT topic `rejected` and stored in `rejected_messages`: [docs/rejected-messages.en.md](docs/rejected-messages.en.md).
 
+On every push, GitHub Actions runs `scripts/check-contracts.py`: the v1 examples have to match [`contracts/telemetry-v1.schema.json`](contracts/telemetry-v1.schema.json), and [`grafana/dashboards/asset-health.json`](grafana/dashboards/asset-health.json) has to be the Asset Health dashboard on the `timescaledb` datasource.
+
 Modbus values arrive as integers in holding registers and are scaled in Node-RED (`HR0 / 10`, `HR1 / 100`, `HR2 / 100`); HR3 carries the device status that becomes `quality`. See [docs/modbus-tcp.en.md](docs/modbus-tcp.en.md).
 
 ### Current limits
