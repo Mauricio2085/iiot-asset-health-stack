@@ -1,0 +1,8 @@
+{
+  "asset_id": "critical-pump-01",
+  "ts": "not-a-date",
+  "temperature": 70.2,
+  "pressure": 2.4,
+  "vibration": 1.1,
+  "quality": "good"
+}

@@ -1,0 +1,8 @@
+{
+  "uid": "asset-health",
+  "panels": [
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgres" }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Telemetry contract v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["asset_id", "ts", "temperature", "pressure", "vibration", "quality"],
+  "properties": {
+    "asset_id": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" },
+    "temperature": { "type": "number" },
+    "pressure": { "type": "number" },
+    "vibration": { "type": "number" },
+    "quality": { "enum": ["good", "uncertain", "bad"] }
+  }
+}
