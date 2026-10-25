@@ -1,3 +1,5 @@
+A maintenance lead cannot tell an unbalancing motor, a failed vibration transmitter, and a silent edge apart from three trend lines. This lab separates them: the motor's vibration crosses warning at 2.8 mm/s and alarm at 4.5 mm/s, a 25 mm/s `bad` reading stays out of the condition, and the pump's temperature, 3 °C high and `uncertain`, leaves the asset `normal`. The one-page case is [docs/case.en.md](docs/case.en.md) ([español](docs/case.md)).
+
 ## Overview
 
 End-to-end industrial telemetry pipeline for critical asset health monitoring. Three simulated critical assets (a pump, a compressor, and a motor) publish temperature, pressure, and vibration. The stack ingests those signals, checks the payload, stores them as a time series, and charts them.
